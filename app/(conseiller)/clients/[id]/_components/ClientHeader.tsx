@@ -1,9 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import { useClient } from '@/lib/ClientContext'
 import {
   colors, fonts, fontSizes, fontWeights, spacing,
-  letterSpacings, statusBadge, transitions,
+  letterSpacings, statusBadge, transitions, buttonGold,
 } from '@/lib/design-tokens'
 
 const KYC_LABELS: Record<string, string> = {
@@ -32,9 +33,21 @@ function formatEuros(n: number) {
 }
 
 export default function ClientHeader({ clientId: _ }: { clientId: string }) {
-  const { data: { client } } = useClient()
+  const { data: { client }, dirty, saving, saveErrors, saveAll, clearErrors } = useClient()
+  const [saved, setSaved] = useState(false)
+
+  const handleSave = async () => {
+    clearErrors()
+    setSaved(false)
+    const { errors } = await saveAll()
+    if (errors.length === 0) {
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2500)
+    }
+  }
 
   const initiales = (client.prenom[0] + client.nom[0]).toUpperCase()
+  const isDirty = dirty.size > 0
 
   return (
     <div style={s.header}>
@@ -71,6 +84,24 @@ export default function ClientHeader({ clientId: _ }: { clientId: string }) {
       <div style={s.encours}>
         <p style={s.encoursLabel}>Encours total</p>
         <p style={s.encoursValue}>{formatEuros(client.encours ?? 0)}</p>
+      </div>
+
+      {/* Sauvegarde */}
+      <div style={s.saveZone}>
+        {saveErrors.length > 0 && (
+          <p style={s.errorHint}>Erreur : {saveErrors[0]}</p>
+        )}
+        {saved && <p style={s.savedHint}>✓ Sauvegardé</p>}
+        {isDirty && !saved && (
+          <p style={s.dirtyHint}>Modifications non sauvegardées</p>
+        )}
+        <button
+          onClick={handleSave}
+          disabled={saving || !isDirty}
+          style={{ ...buttonGold, ...s.saveBtn, opacity: (!isDirty || saving) ? 0.5 : 1 }}
+        >
+          {saving ? 'Sauvegarde...' : 'Sauvegarder'}
+        </button>
       </div>
     </div>
   )
@@ -143,7 +174,46 @@ const s = {
     textAlign: 'right' as const,
     flexShrink: 0,
     paddingLeft: spacing[5],
-    borderLeft: `1px solid ${colors.border}`,
+    borderLeftWidth: '1px',
+    borderLeftStyle: 'solid' as const,
+    borderLeftColor: colors.border,
+  },
+  saveZone: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'flex-end',
+    gap: spacing[1],
+    flexShrink: 0,
+    paddingLeft: spacing[5],
+    borderLeftWidth: '1px',
+    borderLeftStyle: 'solid' as const,
+    borderLeftColor: colors.border,
+  },
+  saveBtn: {
+    padding: `${spacing[2]} ${spacing[5]}`,
+    fontSize: fontSizes.sm,
+    cursor: 'pointer',
+    transition: transitions.base,
+    whiteSpace: 'nowrap' as const,
+  },
+  dirtyHint: {
+    fontFamily: fonts.body,
+    fontSize: fontSizes.xs,
+    color: colors.textLight,
+    fontWeight: fontWeights.light,
+  },
+  savedHint: {
+    fontFamily: fonts.body,
+    fontSize: fontSizes.xs,
+    color: '#16a34a',
+    fontWeight: fontWeights.medium,
+  },
+  errorHint: {
+    fontFamily: fonts.body,
+    fontSize: fontSizes.xs,
+    color: colors.danger,
+    maxWidth: '200px',
+    textAlign: 'right' as const,
   },
   encoursLabel: {
     fontFamily: fonts.body,
