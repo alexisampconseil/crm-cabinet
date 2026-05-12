@@ -51,7 +51,7 @@ export default async function ClientLayout({ children, params }: Props) {
     supabase.from('dossiers').select('*, dossier_etapes(*)').eq('client_id', clientId).order('created_at', { ascending: false }),
   ])
 
-  if (clientRes.status === 'rejected' || !('data' in clientRes) || !clientRes.value?.data) {
+  if (clientRes.status === 'rejected' || !clientRes.value?.data) {
     redirect('/clients')
   }
 
