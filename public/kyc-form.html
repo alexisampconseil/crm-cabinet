@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AMP CONSEIL — Questionnaire patrimonial</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --blue:       #6381a8;
+      --blue-dark:  #4a6185;
+      --blue-deep:  #2d4462;
+      --blue-pale:  #edf1f7;
+      --blue-light: #c9d5e5;
+      --gold:       #b69957;
+      --gold-light: #cdb47a;
+      --gold-pale:  #f7f2e8;
+      --white:      #ffffff;
+      --off-white:  #f8f7f5;
+      --border:     #e2ddd6;
+      --text:       #2a3645;
+      --text-mid:   #5a6a7e;
+      --text-light: #8a9aac;
+      --danger:     #7a3636;
+      --danger-bg:  #f5eded;
+      --success:    #3d6b4f;
+      --success-bg: #edf5f0;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--off-white);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .kyc-header {
+      background: var(--blue-deep);
+      padding: 20px 40px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    .kyc-header h1 {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.6);
+    }
+    .kyc-header .logo-text {
+      font-size: 1rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      color: rgba(255,255,255,0.9);
+    }
+    .kyc-header .logo-text span { color: var(--gold-light); }
+    .header-sep { flex: 1; }
+    .contexte-badge {
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--gold-light);
+      background: rgba(182,153,87,0.15);
+      padding: 4px 12px;
+      border: 1px solid rgba(182,153,87,0.3);
+    }
+
+    /* Progress */
+    .progress-wrap {
+      background: var(--blue-dark);
+      padding: 12px 40px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .progress-label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.5);
+      white-space: nowrap;
+    }
+    .progress-bar {
+      flex: 1;
+      height: 3px;
+      background: rgba(255,255,255,0.1);
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--gold);
+      transition: width 0.4s cubic-bezier(.4,0,.2,1);
+    }
+    .progress-pct {
+      font-size: 0.7rem;
+      font-weight: 500;
+      color: var(--gold-light);
+      white-space: nowrap;
+      min-width: 36px;
+      text-align: right;
+    }
+
+    /* Container */
+    .container {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 40px 20px 80px;
+    }
+
+    /* Step */
+    .step { display: none; }
+    .step.active { display: block; }
+
+    .step-header {
+      margin-bottom: 32px;
+    }
+    .step-eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 10px;
+    }
+    .step-eyebrow::before {
+      content: '';
+      width: 20px;
+      height: 1.5px;
+      background: var(--gold);
+    }
+    .step-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(1.6rem, 3vw, 2.2rem);
+      font-weight: 300;
+      color: var(--blue-deep);
+      line-height: 1.15;
+    }
+    .step-desc {
+      font-size: 0.84rem;
+      color: var(--text-mid);
+      font-weight: 300;
+      line-height: 1.8;
+      margin-top: 10px;
+    }
+
+    /* Card */
+    .card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      padding: 28px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--blue-deep);
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .card-title::before {
+      content: '';
+      width: 24px;
+      height: 2px;
+      background: var(--gold);
+      flex-shrink: 0;
+    }
+
+    /* Grille formulaire */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .form-grid.cols-1 { grid-template-columns: 1fr; }
+    .col-span-2 { grid-column: span 2; }
+    .col-span-3 { grid-column: span 3; }
+
+    /* Champs */
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    label {
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-mid);
+    }
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    input[type="date"],
+    input[type="number"],
+    select,
+    textarea {
+      width: 100%;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.84rem;
+      color: var(--text);
+      background: var(--white);
+      border: 1px solid var(--border);
+      padding: 9px 12px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(99,129,168,0.12);
+    }
+    textarea { resize: vertical; min-height: 80px; }
+    select { cursor: pointer; }
+
+    /* Checkbox / radio group */
+    .check-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 4px;
+    }
+    .check-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-size: 0.84rem;
+      color: var(--text);
+      padding: 8px 14px;
+      border: 1px solid var(--border);
+      background: var(--white);
+      transition: all 0.2s;
+      user-select: none;
+    }
+    .check-item input { display: none; }
+    .check-item.selected {
+      border-color: var(--blue);
+      background: var(--blue-pale);
+      color: var(--blue-deep);
+    }
+    .check-item:hover { border-color: var(--blue-light); }
+
+    /* Section optionnelle (conjoint, etc.) */
+    .collapsible { display: none; }
+    .collapsible.visible { display: contents; }
+
+    /* Lignes répétables */
+    .repeat-list { display: flex; flex-direction: column; gap: 12px; }
+    .repeat-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr auto;
+      gap: 12px;
+      align-items: end;
+      background: var(--off-white);
+      padding: 12px;
+      border: 1px solid var(--border);
+    }
+    .repeat-row.wider { grid-template-columns: 1fr 1fr 1fr 1fr auto; }
+    .btn-delete {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--danger);
+      cursor: pointer;
+      padding: 8px 10px;
+      font-size: 0.8rem;
+      transition: all 0.2s;
+    }
+    .btn-delete:hover { background: var(--danger-bg); border-color: var(--danger); }
+    .btn-add {
+      background: none;
+      border: 1px dashed var(--blue-light);
+      color: var(--blue);
+      cursor: pointer;
+      padding: 10px 18px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      transition: all 0.2s;
+      margin-top: 8px;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .btn-add:hover { border-color: var(--blue); background: var(--blue-pale); }
+
+    /* Navigation */
+    .nav-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--white);
+      border-top: 1px solid var(--border);
+      padding: 14px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 100;
+      box-shadow: 0 -4px 20px rgba(45,68,98,0.08);
+    }
+    .nav-step-info {
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text-light);
+    }
+    .nav-btns { display: flex; gap: 12px; }
+    .btn {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.68rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      padding: 11px 26px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.22s;
+    }
+    .btn-prev {
+      background: transparent;
+      color: var(--text-mid);
+      border: 1px solid var(--border);
+    }
+    .btn-prev:hover { border-color: var(--gold); color: var(--gold); }
+    .btn-next {
+      background: var(--blue);
+      color: var(--white);
+    }
+    .btn-next:hover { background: var(--blue-dark); }
+    .btn-submit {
+      background: var(--gold);
+      color: var(--white);
+    }
+    .btn-submit:hover { background: var(--gold-light); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* États */
+    .screen { display: none; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; text-align: center; gap: 20px; }
+    .screen.active { display: flex; }
+    .screen-icon { font-size: 3rem; }
+    .screen h2 { font-family: 'Cormorant Garamond', serif; font-size: 2rem; font-weight: 300; color: var(--blue-deep); }
+    .screen p { font-size: 0.84rem; color: var(--text-mid); line-height: 1.8; max-width: 420px; }
+    .screen-gold { color: var(--gold); }
+    .screen-success { color: var(--success); }
+
+    /* Alerte */
+    .alert {
+      padding: 12px 16px;
+      font-size: 0.8rem;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .alert.error { background: var(--danger-bg); border-left: 3px solid var(--danger); color: var(--danger); display: block; }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .form-grid.cols-3 { grid-template-columns: 1fr; }
+      .col-span-2, .col-span-3 { grid-column: span 1; }
+      .repeat-row, .repeat-row.wider { grid-template-columns: 1fr; }
+      .kyc-header { padding: 16px 20px; }
+      .progress-wrap { padding: 10px 20px; }
+      .container { padding: 24px 16px 80px; }
+      .nav-bar { padding: 12px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="kyc-header">
+  <div>
+    <div class="logo-text">AMP <span>CONSEIL</span></div>
+    <h1>Questionnaire patrimonial</h1>
+  </div>
+  <div class="header-sep"></div>
+  <div class="contexte-badge" id="contexte-label">Bilan initial</div>
+</div>
+
+<!-- Barre de progression -->
+<div class="progress-wrap">
+  <span class="progress-label">Progression</span>
+  <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+  <span class="progress-pct" id="progress-pct">0 %</span>
+</div>
+
+<!-- Écran de chargement -->
+<div id="screen-loading" class="screen active">
+  <div class="screen-icon">⏳</div>
+  <h2>Chargement…</h2>
+  <p>Initialisation du questionnaire. Merci de patienter.</p>
+</div>
+
+<!-- Écran de succès -->
+<div id="screen-success" class="screen">
+  <div class="screen-icon" style="color:var(--gold)">✓</div>
+  <h2 class="screen-gold">Questionnaire envoyé</h2>
+  <p>Votre conseiller AMP CONSEIL va analyser vos informations et vous contactera prochainement. Vous pouvez fermer cette fenêtre.</p>
+</div>
+
+<!-- Formulaire multi-étapes -->
+<div class="container" id="form-container" style="display:none">
+  <div id="alert-global" class="alert error"></div>
+
+  <!-- Étape 1 — Identité -->
+  <div class="step" data-step="1">
+    <div class="step-header">
+      <div class="step-eyebrow">Étape 1 / 13</div>
+      <h2 class="step-title">Votre identité</h2>
+      <p class="step-desc">Informations personnelles du titulaire principal du dossier.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">État civil</div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Civilité</label>
+          <select id="f_civilite"><option value="">—</option><option>M.</option><option>Mme</option><option>Dr</option><option>Pr</option></select>
+        </div>
+        <div></div>
+        <div class="field"><label>Prénom *</label><input type="text" id="f_prenom" placeholder="Jean" /></div>
+        <div class="field"><label>Nom *</label><input type="text" id="f_nom" placeholder="Dupont" /></div>
+        <div class="field"><label>Date de naissance</label><input type="date" id="f_date_naissance" /></div>
+        <div class="field"><label>Lieu de naissance</label><input type="text" id="f_lieu_naissance" /></div>
+        <div class="field"><label>Nationalité</label><input type="text" id="f_nationalite" value="Française" /></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Étape 2 — Situation familiale -->
+  <div class="step" data-step="2">
+    <div class="step-header">
+      <div class="step-eyebrow">Étape 2 / 13</div>
+      <h2 class="step-title">Situation familiale</h2>
+    </div>
+    <div class="card">
+      <div class="card-title">Statut marital</div>
+      <div class="form-grid">
+        <div class="field col-span-2">
+          <label>Situation</label>
+          <select id="f_situation" onchange="onSituationChange()">
+            <option value="">—</option>
+            <option value="celibataire">Célibataire</option>
+            <option value="marie">Marié(e)</option>
+            <option value="pacse">Pacsé(e)</option>
+            <option value="concubinage">Concubinage / Union libre</option>
+            <option value="divorce">Divorcé(e)</option>
+            <option value="veuf">Veuf / Veuve</option>
+          </select>
+        </div>
+        <div class="field collapsible conjoint-fields" id="conjoint-fields-regime">
+          <label>Régime matrimonial</label>
+          <select id="f_regime_matrimonial">
+            <option value="">—</option>
+            <option value="communaute_reduite">Communauté réduite aux acquêts</option>
+            <option value="separation_biens">Séparation de biens</option>
+            <option value="participation_acquets">Participation aux acquêts</option>
+            <option value="communaute_universelle">Communauté universelle</option>
+            <option value="NA">Sans contrat</option>
+          </select>
+        </div>
+        <div class="field collapsible conjoint-fields">
+          <label>Date du mariage / PACS</label>
+          <input type="date" id="f_date_union" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Conjoint -->
+    <div class="card" id="conjoint-card" style="display:none">
+      <div class="card-title">Conjoint / Partenaire</div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Civilité</label>
+          <select id="f_conjoint_civilite"><option value="">—</option><option>M.</option><option>Mme</option><option>Dr</option></select>
+        </div>
+        <div></div>
+        <div class="field"><label>Prénom</label><input type="text" id="f_conjoint_prenom" /></div>
+        <div class="field"><label>Nom</label><input type="text" id="f_conjoint_nom" /></div>
+        <div class="field"><label>Date de naissance</label><input type="date" id="f_conjoint_date_naissance" /></div>
+        <div class="field"><label>Lieu de naissance</label><input type="text" id="f_conjoint_lieu_naissance" /></div>
+        <div class="field"><label>Nationalité</label><input type="text" id="f_conjoint_nationalite" value="Française" /></div>
+        <div class="field"><label>Profession</label><input type="text" id="f_conjoint_profession" /></div>
+        <div class="field"><label>Employeur</label><input type="text" id="f_conjoint_employeur" /></div>
+        <div class="field"><label>Email</label><input type="email" id="f_conjoint_email" /></div>
+        <div class="field"><label>Téléphone</label><input type="tel" id="f_conjoint_telephone" /></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Étape 3 — Coordonnées -->
+  <div class="step" data-step="3">
+    <div class="step-header">
+      <div class="step-eyebrow">Étape 3 / 13</div>
+      <h2 class="step-title">Coordonnées</h2>
+    </div>
+    <div class="card">
+      <div class="card-title">Adresse & contact</div>
+      <div class="form-grid">
+        <div class="field col-span-2"><label>Adresse</label><input type="text" id="f_adresse" /></div>
+        <div class="field"><label>Code postal</label><input type="text" id="f_code_postal" /></div>
+        <div class="field"><label>Ville</label><input type="text" id="f_ville" /></div>
+        <div class="field"><label>Email</label><input type="email" id="f_email" /></div>
+        <div class="field"><label>Téléphone</label><input type="tel" id="f_telephone" /></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Étape 4 — Profession -->
+  <div class="step" data-step="4">
+    <div class="step-header">
+      <div class="step-eyebrow">Étape 4 / 13</div>
+      <h2 class="step-title">Situation professionnelle</h2>
+    </div>
+    <div class="card">
+      <div class="card-title">Profession</div>
+      <div class="form-grid">
+        <div class="field"><label>Profession</label><input type="text" id="f_profession" /></div>
+        <div class="field"><label>Employeur</label><input type="text" id="f_employeur" /></div>
+        <div class="field col-span-2">
+          <label>Catégorie professionnelle</label>
+          <select id="f_categorie_professionnelle">
+            <option value="">—</option>
+            <option value="Salarié">Salarié(e)</option>
+            <option value="Fonctionnaire">Fonctionnaire</option>
+            <option value="TNS">Travailleur non salarié (TNS)</option>
+            <option value="Chef d'entreprise">Chef d'entreprise</option>
+            <option value="Profession libérale">Profession libérale médicale / paramédicale</option>
+            <option value="Retraité">Retraité(e)</option>
+            <option value="Sans activité">Sans activité professionnelle</option>
+            <option value="Frontalier">Frontalier(ère)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Étape 5 — Enfants -->
+  <div class="step" data-step="5">
+    <div class="step-header">
+      <div class="step-eyebrow">Étape 5 / 13</div>
+      <h2 class="step-title">Enfants</h2>
+    </div>
+    <div class="card">
+      <div class="card-title">Enfants à charge ou rattachés</div>
+      <div class="repeat-list" id="enfants-list"></div>
+      <button class="btn-add" onclick="addEnfant()">+ Ajouter un enfant</button>
+    </div>
+  </div>
+
+  <!-- Étape 6 — Patrimoine immobilier -->
+  <div class="step" data-step="6">
+    <div class="step-header">
+      <div class="step-eyebrow">Étape 6 / 13</div>
+      <h2 class="step-title">Patrimoine immobilier</h2>
+    </div>
+    <div class="card">
+      <div class="card-title">Biens immobiliers</div>
+      <div class="repeat-list" id="immobilier-list"></div>
+      <button class="btn-add" onclick="addImmobilier()">+ Ajouter un bien</button>
+    </div>
+  </div>
+
+  <!-- Étape 7 — Épargne & placements -->
+  <div class="step" data-step="7">
+    <div class="step-header">
+      <div class="step-eyebrow">Étape 7 / 13</div>
+      <h2 class="step-title">Épargne & placements</h2>
+    </div>
+    <div class="card">
+      <div class="card-title">Actifs financiers</div>
+      <div class="repeat-list" id="actifs-list"></div>
+      <button class="btn-add" onclick="addActif()">+ Ajouter un actif</button>
+    </div>
+  </div>
+
+  <!-- Étape 8 — Emprunts -->
+  <div class="step" data-step="8">
+    <div class="step-header">
+      <div class="step-eyebrow">Étape 8 / 13</div>
+      <h2 class="step-title">Emprunts & crédits</h2>
+    </div>
+    <div class="card">
+      <div class="card-title">Passifs financiers</div>
+      <div class="repeat-list" id="passifs-list"></div>
+      <button class="btn-add" onclick="addPassif()">+ Ajouter un emprunt</button>
+    </div>
+  </div>
+
+  <!-- Étape 9 — Revenus -->
+  <div class="step" data-step="9">
+    <div class="step-header">
+      <div class="step-eyebrow">Étape 9 / 13</div>
+      <h2 class="step-title">Revenus annuels</h2>
+    </div>
+    <div class="card">
+      <div class="card-title">Sources de revenus</div>
+      <div class="repeat-list" id="revenus-list"></div>
+      <button class="btn-add" onclick="addRevenu()">+ Ajouter une source</button>
+    </div>
+  </div>
+
+  <!-- Étape 10 — Budget & charges -->
+  <div class="step" data-step="10">
+    <div class="step-header">
+      <div class="step-eyebrow">Étape 10 / 13</div>
+      <h2 class="step-title">Budget & charges annuelles</h2>
+    </div>
+    <div class="card">
+      <div class="card-title">Charges régulières</div>
+      <div class="repeat-list" id="charges-list"></div>
+      <button class="btn-add" onclick="addCharge()">+ Ajouter une charge</button>
+    </div>
+  </div>
+
+  <!-- Étape 11 — Fiscalité -->
+  <div class="step" data-step="11">
+    <div class="step-header">
+      <div class="step-eyebrow">Étape 11 / 13</div>
+      <h2 class="step-title">Situation fiscale</h2>
+    </div>
+    <div class="card">
+      <div class="card-title">Fiscalité</div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Tranche d'imposition (IR)</label>
+          <select id="f_tranche_ir">
+            <option value="">—</option>
+            <option value="0">0 % — Non imposable</option>
+            <option value="11">11 %</option>
+            <option value="30">30 %</option>
+            <option value="41">41 %</option>
+            <option value="45">45 %</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Revenu fiscal de référence (€)</label>
+          <input type="number" id="f_revenu_fiscal" placeholder="ex: 75000" min="0" />
+        </div>
+        <div class="field">
+          <label>IFI estimé (€)</label>
+          <input type="number" id="f_ifi" placeholder="0 si non concerné" min="0" />
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Dispositifs fiscaux en cours</div>
+      <div class="check-group" id="dispositifs-group">
+        <label class="check-item"><input type="checkbox" value="Loi Pinel" onchange="toggleCheck(this)" /> Loi Pinel</label>
+        <label class="check-item"><input type="checkbox" value="LMNP" onchange="toggleCheck(this)" /> LMNP</label>
+        <label class="check-item"><input type="checkbox" value="Déficit foncier" onchange="toggleCheck(this)" /> Déficit foncier</label>
+        <label class="check-item"><input type="checkbox" value="Malraux" onchange="toggleCheck(this)" /> Malraux</label>
+        <label class="check-item"><input type="checkbox" value="Girardin" onchange="toggleCheck(this)" /> Girardin</label>
+        <label class="check-item"><input type="checkbox" value="PER déductible" onchange="toggleCheck(this)" /> PER déductible</label>
+        <label class="check-item"><input type="checkbox" value="FIP/FCPI" onchange="toggleCheck(this)" /> FIP / FCPI</label>
+        <label class="check-item"><input type="checkbox" value="Aucun" onchange="toggleCheck(this)" /> Aucun</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Étape 12 — Objectifs -->
+  <div class="step" data-step="12">
+    <div class="step-header">
+      <div class="step-eyebrow">Étape 12 / 13</div>
+      <h2 class="step-title">Objectifs patrimoniaux</h2>
+    </div>
+    <div class="card">
+      <div class="card-title">Priorités</div>
+      <div class="check-group" id="objectifs-group">
+        <label class="check-item"><input type="checkbox" value="Préparer la retraite" onchange="toggleCheck(this)" /> Préparer la retraite</label>
+        <label class="check-item"><input type="checkbox" value="Réduire ma fiscalité" onchange="toggleCheck(this)" /> Réduire ma fiscalité</label>
+        <label class="check-item"><input type="checkbox" value="Constituer un capital" onchange="toggleCheck(this)" /> Constituer un capital</label>
+        <label class="check-item"><input type="checkbox" value="Protéger ma famille" onchange="toggleCheck(this)" /> Protéger ma famille</label>
+        <label class="check-item"><input type="checkbox" value="Investissement immobilier" onchange="toggleCheck(this)" /> Investissement immobilier</label>
+        <label class="check-item"><input type="checkbox" value="Transmettre mon patrimoine" onchange="toggleCheck(this)" /> Transmettre mon patrimoine</label>
+        <label class="check-item"><input type="checkbox" value="Générer des revenus complémentaires" onchange="toggleCheck(this)" /> Revenus complémentaires</label>
+        <label class="check-item"><input type="checkbox" value="Épargne de précaution" onchange="toggleCheck(this)" /> Épargne de précaution</label>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Profil de risque</div>
+      <div class="check-group" id="profil-group">
+        <label class="check-item"><input type="radio" name="profil_risque" value="prudent" onchange="toggleRadio(this,'profil-group')" /> Prudent — sécurité avant tout</label>
+        <label class="check-item"><input type="radio" name="profil_risque" value="equilibre" onchange="toggleRadio(this,'profil-group')" /> Équilibré — rendement modéré</label>
+        <label class="check-item"><input type="radio" name="profil_risque" value="dynamique" onchange="toggleRadio(this,'profil-group')" /> Dynamique — performance ciblée</label>
+        <label class="check-item"><input type="radio" name="profil_risque" value="agressif" onchange="toggleRadio(this,'profil-group')" /> Agressif — maximiser le rendement</label>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Horizon de placement</div>
+      <div class="check-group" id="horizon-group">
+        <label class="check-item"><input type="radio" name="horizon" value="court_terme" onchange="toggleRadio(this,'horizon-group')" /> Court terme (&lt; 3 ans)</label>
+        <label class="check-item"><input type="radio" name="horizon" value="moyen_terme" onchange="toggleRadio(this,'horizon-group')" /> Moyen terme (3–10 ans)</label>
+        <label class="check-item"><input type="radio" name="horizon" value="long_terme" onchange="toggleRadio(this,'horizon-group')" /> Long terme (&gt; 10 ans)</label>
+        <label class="check-item"><input type="radio" name="horizon" value="retraite" onchange="toggleRadio(this,'horizon-group')" /> Jusqu'à la retraite</label>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Besoin de liquidités</div>
+      <div class="check-group" id="liquidites-group">
+        <label class="check-item"><input type="radio" name="besoin_liquidites" value="faible" onchange="toggleRadio(this,'liquidites-group')" /> Faible — fonds disponibles suffisants</label>
+        <label class="check-item"><input type="radio" name="besoin_liquidites" value="moyen" onchange="toggleRadio(this,'liquidites-group')" /> Moyen</label>
+        <label class="check-item"><input type="radio" name="besoin_liquidites" value="fort" onchange="toggleRadio(this,'liquidites-group')" /> Fort</label>
+        <label class="check-item"><input type="radio" name="besoin_liquidites" value="tres_fort" onchange="toggleRadio(this,'liquidites-group')" /> Très fort — besoin de disponibilités élevé</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Étape 13 — Commentaire & validation -->
+  <div class="step" data-step="13">
+    <div class="step-header">
+      <div class="step-eyebrow">Étape 13 / 13</div>
+      <h2 class="step-title">Commentaire & validation</h2>
+      <p class="step-desc">Ajoutez toute information complémentaire utile pour votre conseiller.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Informations complémentaires</div>
+      <div class="field">
+        <label>Commentaire libre</label>
+        <textarea id="f_commentaire" rows="5" placeholder="Situations particulières, questions, projets en cours…"></textarea>
+      </div>
+    </div>
+    <div class="card" style="background:var(--gold-pale);border-color:var(--gold);border-left:3px solid var(--gold)">
+      <p style="font-size:0.8rem;color:var(--text-mid);line-height:1.8">
+        En validant ce formulaire, vous autorisez AMP CONSEIL à utiliser ces informations dans le cadre de l'établissement de votre bilan patrimonial, conformément à notre <strong>politique de confidentialité</strong> et au <strong>RGPD</strong>. Ces données ne seront jamais transmises à des tiers sans votre accord.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- Navigation bas de page -->
+<div class="nav-bar" id="nav-bar" style="display:none">
+  <span class="nav-step-info" id="nav-step-info">Étape 1 / 13</span>
+  <div class="nav-btns">
+    <button class="btn btn-prev" id="btn-prev" onclick="prevStep()" style="display:none">← Précédent</button>
+    <button class="btn btn-next" id="btn-next" onclick="nextStep()">Suivant →</button>
+    <button class="btn btn-submit" id="btn-submit" onclick="submitForm()" style="display:none">Envoyer le questionnaire</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// ÉTAT GLOBAL
+// ============================================================
+const TOTAL_STEPS = 13
+let currentStep = 1
+let kycToken = null
+let clientId = null
+let contexte = 'prospect'
+
+// ============================================================
+// INIT — écoute le postMessage KYC_PREFILL et signal prêt
+// ============================================================
+window.addEventListener('message', function(event) {
+  if (event.data && event.data.type === 'KYC_PREFILL') {
+    prefill(event.data.payload)
+  }
+})
+
+window.addEventListener('DOMContentLoaded', function() {
+  // Lire le token depuis l'URL (mode public kyc/[token])
+  const params = new URLSearchParams(window.location.search)
+  kycToken = params.get('token')
+  clientId = params.get('client_id')
+  contexte = params.get('contexte') || 'prospect'
+
+  updateContexteLabel()
+
+  // Signaler que l'iframe est prête
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: 'KYC_IFRAME_READY' }, '*')
+  }
+
+  // Initialiser l'affichage
+  showStep(1)
+  document.getElementById('screen-loading').classList.remove('active')
+  document.getElementById('form-container').style.display = 'block'
+  document.getElementById('nav-bar').style.display = 'flex'
+})
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function showStep(n) {
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'))
+  const target = document.querySelector('[data-step="' + n + '"]')
+  if (target) target.classList.add('active')
+
+  currentStep = n
+  updateProgress()
+  updateNavButtons()
+  document.getElementById('nav-step-info').textContent = 'Étape ' + n + ' / ' + TOTAL_STEPS
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function nextStep() {
+  if (currentStep < TOTAL_STEPS) showStep(currentStep + 1)
+}
+
+function prevStep() {
+  if (currentStep > 1) showStep(currentStep - 1)
+}
+
+function updateProgress() {
+  const pct = Math.round(((currentStep - 1) / TOTAL_STEPS) * 100)
+  document.getElementById('progress-fill').style.width = pct + '%'
+  document.getElementById('progress-pct').textContent = pct + ' %'
+}
+
+function updateNavButtons() {
+  document.getElementById('btn-prev').style.display = currentStep > 1 ? 'inline-flex' : 'none'
+  document.getElementById('btn-next').style.display = currentStep < TOTAL_STEPS ? 'inline-flex' : 'none'
+  document.getElementById('btn-submit').style.display = currentStep === TOTAL_STEPS ? 'inline-flex' : 'none'
+}
+
+// ============================================================
+// SITUATION FAMILIALE — afficher/masquer conjoint
+// ============================================================
+const AVEC_CONJOINT = ['marie', 'pacse', 'concubinage']
+
+function onSituationChange() {
+  const val = document.getElementById('f_situation').value
+  const avecConjoint = AVEC_CONJOINT.includes(val)
+  document.getElementById('conjoint-card').style.display = avecConjoint ? 'block' : 'none'
+  document.querySelectorAll('.conjoint-fields').forEach(el => {
+    el.classList.toggle('visible', avecConjoint)
+  })
+}
+
+// ============================================================
+// CHECKBOXES / RADIO (style visuel)
+// ============================================================
+function toggleCheck(input) {
+  input.closest('.check-item').classList.toggle('selected', input.checked)
+}
+
+function toggleRadio(input, groupId) {
+  document.querySelectorAll('#' + groupId + ' .check-item').forEach(el => el.classList.remove('selected'))
+  input.closest('.check-item').classList.add('selected')
+}
+
+// ============================================================
+// LIGNES RÉPÉTABLES
+// ============================================================
+function addEnfant() {
+  const list = document.getElementById('enfants-list')
+  const id = Date.now()
+  const row = document.createElement('div')
+  row.className = 'repeat-row'
+  row.id = 'enfant-' + id
+  row.innerHTML = `
+    <div class="field"><label>Prénom</label><input type="text" /></div>
+    <div class="field"><label>Nom</label><input type="text" /></div>
+    <div class="field"><label>Date de naissance</label><input type="date" /></div>
+    <div class="field"><label>Filiation</label>
+      <select><option value="">—</option><option value="commun">Commun</option><option value="client">Client</option><option value="conjoint">Conjoint</option><option value="adoption">Adoption</option></select>
+    </div>
+    <button class="btn-delete" onclick="removeRow('enfant-${id}')">✕</button>
+  `
+  list.appendChild(row)
+}
+
+function addImmobilier() {
+  const list = document.getElementById('immobilier-list')
+  const id = Date.now()
+  const row = document.createElement('div')
+  row.className = 'repeat-row wider'
+  row.id = 'immo-' + id
+  row.innerHTML = `
+    <div class="field"><label>Nature</label>
+      <select><option value="RP">Résidence principale</option><option value="RS">Résidence secondaire</option><option value="Locatif">Locatif</option><option value="SCI">SCI</option><option value="Autre">Autre</option></select>
+    </div>
+    <div class="field"><label>Valeur estimée (€)</label><input type="number" min="0" placeholder="250000" /></div>
+    <div class="field"><label>Détenu par</label>
+      <select><option value="client">Client</option><option value="conjoint">Conjoint</option><option value="commun">Commun</option><option value="SCI">SCI</option></select>
+    </div>
+    <div class="field"><label>Revenus locatifs / an (€)</label><input type="number" min="0" placeholder="0" /></div>
+    <button class="btn-delete" onclick="removeRow('immo-${id}')">✕</button>
+  `
+  list.appendChild(row)
+}
+
+function addActif() {
+  const list = document.getElementById('actifs-list')
+  const id = Date.now()
+  const row = document.createElement('div')
+  row.className = 'repeat-row wider'
+  row.id = 'actif-' + id
+  row.innerHTML = `
+    <div class="field"><label>Nature</label>
+      <select><option value="AV">Assurance-vie</option><option value="PER">PER</option><option value="SCPI">SCPI</option><option value="Capitalisation">Capitalisation</option><option value="PEA">PEA</option><option value="CTO">CTO</option><option value="Livret">Livret</option><option value="Autre">Autre</option></select>
+    </div>
+    <div class="field"><label>Libellé / Assureur</label><input type="text" placeholder="ex: AV Cardif" /></div>
+    <div class="field"><label>Montant (€)</label><input type="number" min="0" placeholder="50000" /></div>
+    <div class="field"><label>Souscrit par</label>
+      <select><option value="client">Client</option><option value="conjoint">Conjoint</option><option value="commun">Commun</option></select>
+    </div>
+    <button class="btn-delete" onclick="removeRow('actif-${id}')">✕</button>
+  `
+  list.appendChild(row)
+}
+
+function addPassif() {
+  const list = document.getElementById('passifs-list')
+  const id = Date.now()
+  const row = document.createElement('div')
+  row.className = 'repeat-row wider'
+  row.id = 'passif-' + id
+  row.innerHTML = `
+    <div class="field"><label>Nature</label>
+      <select><option value="immobilier">Immobilier</option><option value="consommation">Consommation</option><option value="professionnel">Professionnel</option><option value="autre">Autre</option></select>
+    </div>
+    <div class="field"><label>Banque</label><input type="text" /></div>
+    <div class="field"><label>Capital restant dû (€)</label><input type="number" min="0" /></div>
+    <div class="field"><label>Mensualité (€)</label><input type="number" min="0" /></div>
+    <button class="btn-delete" onclick="removeRow('passif-${id}')">✕</button>
+  `
+  list.appendChild(row)
+}
+
+function addRevenu() {
+  const list = document.getElementById('revenus-list')
+  const id = Date.now()
+  const row = document.createElement('div')
+  row.className = 'repeat-row'
+  row.id = 'rev-' + id
+  row.innerHTML = `
+    <div class="field"><label>Nature du revenu</label><input type="text" placeholder="ex: Salaire, loyers…" /></div>
+    <div class="field"><label>Montant annuel (€)</label><input type="number" min="0" /></div>
+    <div class="field"><label>Bénéficiaire</label>
+      <select><option value="client">Client</option><option value="conjoint">Conjoint</option><option value="commun">Foyer</option></select>
+    </div>
+    <button class="btn-delete" onclick="removeRow('rev-${id}')">✕</button>
+  `
+  list.appendChild(row)
+}
+
+function addCharge() {
+  const list = document.getElementById('charges-list')
+  const id = Date.now()
+  const row = document.createElement('div')
+  row.className = 'repeat-row'
+  row.id = 'charge-' + id
+  row.innerHTML = `
+    <div class="field"><label>Nature de la charge</label><input type="text" placeholder="ex: Loyer, charges copro…" /></div>
+    <div class="field"><label>Montant annuel (€)</label><input type="number" min="0" /></div>
+    <div class="field"><label>Fréquence</label>
+      <select><option value="annuel">Annuelle</option><option value="mensuel">Mensuelle ×12</option></select>
+    </div>
+    <button class="btn-delete" onclick="removeRow('charge-${id}')">✕</button>
+  `
+  list.appendChild(row)
+}
+
+function removeRow(id) {
+  const el = document.getElementById(id)
+  if (el) el.remove()
+}
+
+// ============================================================
+// CONTEXTE LABEL
+// ============================================================
+function updateContexteLabel() {
+  const labels = {
+    prospect: 'Bilan initial',
+    maj_annuelle: 'Mise à jour annuelle',
+    modif_situation: 'Modification de situation',
+  }
+  document.getElementById('contexte-label').textContent = labels[contexte] || 'Questionnaire'
+}
+
+// ============================================================
+// COLLECTE DES DONNÉES
+// ============================================================
+function collectData() {
+  const val = id => { const el = document.getElementById(id); return el ? el.value.trim() || null : null }
+  const num = id => { const el = document.getElementById(id); const v = parseFloat(el?.value); return isNaN(v) ? null : v }
+
+  // Enfants
+  const enfants = []
+  document.querySelectorAll('#enfants-list .repeat-row').forEach(row => {
+    const inputs = row.querySelectorAll('input, select')
+    enfants.push({
+      prenom: inputs[0]?.value || '',
+      nom: inputs[1]?.value || null,
+      date_naissance: inputs[2]?.value || null,
+      filiation: inputs[3]?.value || null,
+      a_charge: true,
+    })
+  })
+
+  // Immobilier
+  const immobilier = []
+  document.querySelectorAll('#immobilier-list .repeat-row').forEach(row => {
+    const inputs = row.querySelectorAll('input, select')
+    immobilier.push({
+      nature: inputs[0]?.value,
+      valeur: parseFloat(inputs[1]?.value) || null,
+      detenu_par: inputs[2]?.value,
+      revenus_annuels: parseFloat(inputs[3]?.value) || null,
+    })
+  })
+
+  // Actifs
+  const actifs = []
+  document.querySelectorAll('#actifs-list .repeat-row').forEach(row => {
+    const inputs = row.querySelectorAll('input, select')
+    actifs.push({
+      nature: inputs[0]?.value,
+      libelle: inputs[1]?.value || '',
+      montant: parseFloat(inputs[2]?.value) || null,
+      souscrit_par: inputs[3]?.value,
+    })
+  })
+
+  // Passifs
+  const passifs = []
+  document.querySelectorAll('#passifs-list .repeat-row').forEach(row => {
+    const inputs = row.querySelectorAll('input, select')
+    passifs.push({
+      nature: inputs[0]?.value,
+      banque: inputs[1]?.value || null,
+      montant: parseFloat(inputs[2]?.value) || null,
+      mensualite: parseFloat(inputs[3]?.value) || null,
+    })
+  })
+
+  // Budget postes
+  const budget_postes = []
+  document.querySelectorAll('#revenus-list .repeat-row').forEach(row => {
+    const inputs = row.querySelectorAll('input, select')
+    budget_postes.push({ type: 'revenu', libelle: inputs[0]?.value || '', montant_annuel: parseFloat(inputs[1]?.value) || null })
+  })
+  document.querySelectorAll('#charges-list .repeat-row').forEach(row => {
+    const inputs = row.querySelectorAll('input, select')
+    let montant = parseFloat(inputs[1]?.value) || null
+    if (inputs[2]?.value === 'mensuel' && montant) montant = montant * 12
+    budget_postes.push({ type: 'charge', libelle: inputs[0]?.value || '', montant_annuel: montant })
+  })
+
+  // Dispositifs fiscaux
+  const dispositifs = []
+  document.querySelectorAll('#dispositifs-group input:checked').forEach(el => dispositifs.push(el.value))
+
+  // Objectifs
+  const objectifs_labels = []
+  document.querySelectorAll('#objectifs-group input:checked').forEach(el => objectifs_labels.push(el.value))
+
+  return {
+    famille: {
+      civilite: val('f_civilite'),
+      prenom: val('f_prenom'),
+      nom: val('f_nom'),
+      date_naissance: val('f_date_naissance'),
+      lieu_naissance: val('f_lieu_naissance'),
+      nationalite: val('f_nationalite') || 'Française',
+      situation: val('f_situation'),
+      regime_matrimonial: val('f_regime_matrimonial'),
+      date_union: val('f_date_union'),
+      adresse: val('f_adresse'),
+      code_postal: val('f_code_postal'),
+      ville: val('f_ville'),
+      email: val('f_email'),
+      telephone: val('f_telephone'),
+      profession: val('f_profession'),
+      employeur: val('f_employeur'),
+      categorie_professionnelle: val('f_categorie_professionnelle'),
+      conjoint_civilite: val('f_conjoint_civilite'),
+      conjoint_prenom: val('f_conjoint_prenom'),
+      conjoint_nom: val('f_conjoint_nom'),
+      conjoint_date_naissance: val('f_conjoint_date_naissance'),
+      conjoint_lieu_naissance: val('f_conjoint_lieu_naissance'),
+      conjoint_nationalite: val('f_conjoint_nationalite'),
+      conjoint_profession: val('f_conjoint_profession'),
+      conjoint_employeur: val('f_conjoint_employeur'),
+      conjoint_email: val('f_conjoint_email'),
+      conjoint_telephone: val('f_conjoint_telephone'),
+    },
+    enfants,
+    immobilier,
+    actifs,
+    passifs,
+    budget_postes,
+    fiscalite: {
+      tranche_ir: val('f_tranche_ir'),
+      revenu_fiscal: num('f_revenu_fiscal'),
+      ifi: num('f_ifi'),
+      dispositifs,
+    },
+    objectifs: objectifs_labels.map((l, i) => ({
+      libelle: l,
+      priorite: i + 1,
+      profil_risque: document.querySelector('input[name="profil_risque"]:checked')?.value || null,
+      horizon: document.querySelector('input[name="horizon"]:checked')?.value || null,
+      besoin_liquidites: document.querySelector('input[name="besoin_liquidites"]:checked')?.value || null,
+    })),
+    commentaire: val('f_commentaire'),
+    contexte,
+  }
+}
+
+// ============================================================
+// PRÉ-REMPLISSAGE (depuis CRM via postMessage)
+// ============================================================
+function prefill(data) {
+  if (!data) return
+  const set = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined && val !== null) el.value = val }
+
+  if (data.famille) {
+    const f = data.famille
+    set('f_civilite', f.civilite); set('f_prenom', f.prenom); set('f_nom', f.nom)
+    set('f_date_naissance', f.date_naissance); set('f_lieu_naissance', f.lieu_naissance)
+    set('f_nationalite', f.nationalite)
+    set('f_situation', f.situation); onSituationChange()
+    set('f_regime_matrimonial', f.regime_matrimonial); set('f_date_union', f.date_union)
+    set('f_adresse', f.adresse); set('f_code_postal', f.code_postal); set('f_ville', f.ville)
+    set('f_email', f.email); set('f_telephone', f.telephone)
+    set('f_profession', f.profession); set('f_employeur', f.employeur)
+    set('f_categorie_professionnelle', f.categorie_professionnelle)
+    set('f_conjoint_civilite', f.conjoint_civilite); set('f_conjoint_prenom', f.conjoint_prenom)
+    set('f_conjoint_nom', f.conjoint_nom); set('f_conjoint_date_naissance', f.conjoint_date_naissance)
+    set('f_conjoint_lieu_naissance', f.conjoint_lieu_naissance); set('f_conjoint_nationalite', f.conjoint_nationalite)
+    set('f_conjoint_profession', f.conjoint_profession); set('f_conjoint_employeur', f.conjoint_employeur)
+    set('f_conjoint_email', f.conjoint_email); set('f_conjoint_telephone', f.conjoint_telephone)
+  }
+
+  if (data.fiscalite) {
+    set('f_tranche_ir', data.fiscalite.tranche_ir)
+    set('f_revenu_fiscal', data.fiscalite.revenu_fiscal)
+    set('f_ifi', data.fiscalite.ifi)
+    if (data.fiscalite.dispositifs) {
+      data.fiscalite.dispositifs.forEach(d => {
+        const cb = document.querySelector('#dispositifs-group input[value="' + d + '"]')
+        if (cb) { cb.checked = true; toggleCheck(cb) }
+      })
+    }
+  }
+}
+
+// ============================================================
+// SOUMISSION
+// ============================================================
+async function submitForm() {
+  const btn = document.getElementById('btn-submit')
+  btn.disabled = true
+  btn.textContent = 'Envoi en cours…'
+
+  const payload = collectData()
+
+  // Mode iframe — envoyer via postMessage
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: 'KYC_SUBMIT', payload }, '*')
+    showSuccess()
+    return
+  }
+
+  // Mode public — envoyer via API
+  if (!kycToken && !clientId) {
+    showError('Lien invalide. Contactez votre conseiller.')
+    btn.disabled = false
+    btn.textContent = 'Envoyer le questionnaire'
+    return
+  }
+
+  try {
+    const res = await fetch('/api/kyc/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: kycToken, client_id: clientId, ...payload }),
+    })
+
+    if (!res.ok) {
+      const err = await res.json()
+      throw new Error(err.error || 'Erreur serveur')
+    }
+
+    showSuccess()
+  } catch (e) {
+    showError(e.message)
+    btn.disabled = false
+    btn.textContent = 'Envoyer le questionnaire'
+  }
+}
+
+function showSuccess() {
+  document.getElementById('form-container').style.display = 'none'
+  document.getElementById('nav-bar').style.display = 'none'
+  document.getElementById('progress-fill').style.width = '100%'
+  document.getElementById('progress-pct').textContent = '100 %'
+  document.getElementById('screen-success').classList.add('active')
+}
+
+function showError(msg) {
+  const el = document.getElementById('alert-global')
+  el.textContent = msg
+  el.classList.add('error')
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+</script>
+</body>
+</html>
