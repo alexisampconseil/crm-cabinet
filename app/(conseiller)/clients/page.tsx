@@ -177,7 +177,7 @@ export default function ClientsPage() {
                 onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
               >
                 <td style={tableCell}>
-                  <div style={s.clientCell}>
+                  <Link href={`/clients/${c.id}`} style={s.clientCellLink}>
                     <div style={s.avatar}>
                       {(c.prenom[0] + c.nom[0]).toUpperCase()}
                     </div>
@@ -185,7 +185,7 @@ export default function ClientsPage() {
                       <div style={s.clientName}>{c.prenom} {c.nom}</div>
                       {c.email && <div style={s.clientEmail}>{c.email}</div>}
                     </div>
-                  </div>
+                  </Link>
                 </td>
                 <td style={{ ...tableCell, color: colors.textMid, fontFamily: 'monospace', fontSize: fontSizes.xs }}>
                   {c.code ?? '—'}
@@ -276,6 +276,13 @@ const s = {
   tableRow: {
     cursor: 'pointer',
     transition: transitions.fast,
+  } as React.CSSProperties,
+  clientCellLink: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[3],
+    textDecoration: 'none',
+    color: 'inherit',
   } as React.CSSProperties,
   clientCell: {
     display: 'flex',
