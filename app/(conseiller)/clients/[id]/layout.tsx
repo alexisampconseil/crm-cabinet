@@ -35,7 +35,12 @@ export default async function ClientLayout({ children, params }: Props) {
   const { data: client, error: clientError } = await supabase
     .from('clients').select('*').eq('id', clientId).single()
 
-  if (clientError || !client) redirect('/clients')
+  if (clientError || !client) {
+    const reason = clientError
+      ? `e-${clientError.code}-${String(clientError.message).substring(0, 40).replace(/\s/g, '_')}`
+      : `not_found_id_${clientId}`
+    redirect(`/clients?debug=${encodeURIComponent(reason)}`)
+  }
 
   await logAccess('client_view', `client:${clientId}`)
 
