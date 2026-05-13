@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import Link from 'next/link'
 import type { Client } from '@/lib/supabase'
@@ -49,6 +49,8 @@ function formatDate(d: string | null) {
 
 export default function ClientsPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const debugInfo = searchParams.get('debug')
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -86,6 +88,12 @@ export default function ClientsPage() {
 
   return (
     <div>
+      {/* Bandeau debug — visible uniquement si ?debug= présent dans l'URL */}
+      {debugInfo && (
+        <div style={{ backgroundColor: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '4px', padding: '12px 16px', marginBottom: '16px', fontFamily: 'monospace', fontSize: '13px', color: '#92400e', wordBreak: 'break-all' }}>
+          <strong>DEBUG REDIRECT:</strong> {decodeURIComponent(debugInfo)}
+        </div>
+      )}
       {/* En-tête */}
       <div style={s.pageHeader}>
         <div>
