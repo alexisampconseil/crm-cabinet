@@ -31,13 +31,20 @@ export default async function ClientLayout({ children, params }: Props) {
     .single()
   if (roleData?.role !== 'conseiller') redirect('/tableau-de-bord')
 
-  // Chargement parallèle de toutes les données du dossier
+  // Vérification existence du client (accès direct, sans Promise.allSettled)
+  const { data: client, error: clientError } = await supabase
+    .from('clients').select('*').eq('id', clientId).single()
+
+  if (clientError || !client) redirect('/clients')
+
+  await logAccess('client_view', `client:${clientId}`)
+
+  // Chargement parallèle des données secondaires
   const [
-    clientRes, familleRes, enfantsRes, objectifsRes,
+    familleRes, enfantsRes, objectifsRes,
     actifsRes, biensRes, passifsRes, budgetRes,
     fiscaliteRes, prevoyanceRes, contratsRes, dossiersRes,
   ] = await Promise.allSettled([
-    supabase.from('clients').select('*').eq('id', clientId).single(),
     supabase.from('famille').select('*').eq('client_id', clientId).single(),
     supabase.from('enfants').select('*').eq('client_id', clientId),
     supabase.from('objectifs').select('*').eq('client_id', clientId).order('priorite'),
@@ -50,14 +57,6 @@ export default async function ClientLayout({ children, params }: Props) {
     supabase.from('contrats_prevoyance').select('*').eq('client_id', clientId),
     supabase.from('dossiers').select('*, dossier_etapes(*)').eq('client_id', clientId).order('created_at', { ascending: false }),
   ])
-
-  if (clientRes.status === 'rejected' || !clientRes.value?.data) {
-    redirect('/clients')
-  }
-
-  const client = (clientRes as PromiseFulfilledResult<{ data: Client }>).value.data
-
-  await logAccess('client_view', `client:${clientId}`)
 
   const initial: ClientContextData = {
     client,
