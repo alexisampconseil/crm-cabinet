@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { colors, fonts, fontSizes, fontWeights, spacing, transitions, layout } from '@/lib/design-tokens'
 import Image from 'next/image'
@@ -16,23 +17,23 @@ const NAV = [
     section: 'Principal',
     items: [
       { href: '/dashboard', label: 'Tableau de bord', icon: IconDashboard },
-      { href: '/clients',   label: 'Clients',          icon: IconClients },
+      { href: '/clients',   label: 'Clients',          icon: IconClients,  badge: true },
     ],
   },
   {
     section: 'Activité',
     items: [
-      { href: '/conformite', label: 'Conformité',      icon: IconShield },
-      { href: '/catalogue',  label: 'Catalogue',       icon: IconCatalogue },
-      { href: '/portefeuilles', label: 'Portefeuilles',icon: IconChart },
-      { href: '/agenda',     label: 'Agenda',           icon: IconCalendar },
+      { href: '/conformite',    label: 'Conformité',    icon: IconShield },
+      { href: '/catalogue',     label: 'Catalogue',     icon: IconCatalogue },
+      { href: '/portefeuilles', label: 'Portefeuilles', icon: IconChart },
+      { href: '/agenda',        label: 'Agenda',        icon: IconCalendar },
     ],
   },
   {
     section: 'Gestion',
     items: [
-      { href: '/documents',  label: 'Documents',       icon: IconFolder },
-      { href: '/reporting',  label: 'Reporting',       icon: IconBar },
+      { href: '/documents', label: 'Documents', icon: IconFolder },
+      { href: '/reporting', label: 'Reporting',  icon: IconBar },
     ],
   },
 ]
@@ -40,6 +41,48 @@ const NAV = [
 export default function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
+  const [unreadMessages, setUnreadMessages] = useState(0)
+
+  useEffect(() => {
+    fetchUnreadCount()
+
+    const channel = supabase
+      .channel('sidebar-unread')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messagerie',
+        filter: `expediteur=eq.client`,
+      }, payload => {
+        if ((payload.new as { lu: boolean }).lu === false) {
+          setUnreadMessages(n => n + 1)
+        }
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'messagerie',
+      }, () => {
+        fetchUnreadCount()
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [])
+
+  // Rafraîchir le compteur quand l'utilisateur navigue (notamment après avoir lu des messages)
+  useEffect(() => {
+    fetchUnreadCount()
+  }, [pathname])
+
+  async function fetchUnreadCount() {
+    const { count } = await supabase
+      .from('messagerie')
+      .select('*', { count: 'exact', head: true })
+      .eq('expediteur', 'client')
+      .eq('lu', false)
+    setUnreadMessages(count ?? 0)
+  }
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -69,17 +112,18 @@ export default function Sidebar() {
             <p style={s.section}>{group.section}</p>
             {group.items.map(item => {
               const active = pathname === item.href || pathname.startsWith(item.href + '/')
+              const showBadge = item.badge && unreadMessages > 0
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  style={{
-                    ...s.link,
-                    ...(active ? s.linkActive : {}),
-                  }}
+                  style={{ ...s.link, ...(active ? s.linkActive : {}) }}
                 >
                   <item.icon active={active} />
-                  {item.label}
+                  <span style={{ flex: 1 }}>{item.label}</span>
+                  {showBadge && (
+                    <span style={s.badge}>{unreadMessages > 99 ? '99+' : unreadMessages}</span>
+                  )}
                 </Link>
               )
             })}
@@ -227,6 +271,22 @@ const s = {
     color: colors.white,
     backgroundColor: 'rgba(182,153,87,0.12)',
     borderLeftColor: colors.gold,
+  } as React.CSSProperties,
+  badge: {
+    backgroundColor: colors.danger,
+    color: colors.white,
+    fontFamily: fonts.body,
+    fontSize: '0.55rem',
+    fontWeight: fontWeights.bold,
+    borderRadius: '9999px',
+    minWidth: '16px',
+    height: '16px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '0 4px',
+    lineHeight: 1,
+    flexShrink: 0,
   } as React.CSSProperties,
   footer: {
     padding: `0 0 ${spacing[4]}`,
