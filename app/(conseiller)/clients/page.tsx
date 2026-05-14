@@ -111,7 +111,7 @@ export default function ClientsPage() {
             <div style={s.rule} />
             <span style={s.eyebrowText}>Gestion</span>
           </div>
-          <h1 style={s.title}>Clients & Prospects</h1>
+          <h1 style={s.title}>Clients & Prospects v3</h1>
         </div>
         <Link href="/clients/nouveau" style={{ ...buttonPrimary, padding: `${spacing[3]} ${spacing[6]}` }}>
           + Nouveau client
