@@ -22,6 +22,4 @@ const standaloneDir = path.join('.next', 'standalone')
 copyDir('public', path.join(standaloneDir, 'public'))
 copyDir(path.join('.next', 'static'), path.join(standaloneDir, '.next', 'static'))
 
-fs.copyFileSync(path.join(standaloneDir, 'sites', 'crm.ampconseil.com', 'server.js'), path.join(standaloneDir, 'server.js'))
-
 console.log('✓ Assets copiés dans .next/standalone/')
