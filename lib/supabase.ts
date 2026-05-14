@@ -47,6 +47,7 @@ export interface Famille {
   nom: string | null
   prenom: string | null
   lieu_naissance: string | null
+  code_postal_naissance: string | null
   date_naissance: string | null
   nationalite: string | null
   situation: 'celibataire' | 'marie' | 'pacse' | 'concubinage' | 'divorce' | 'veuf' | null

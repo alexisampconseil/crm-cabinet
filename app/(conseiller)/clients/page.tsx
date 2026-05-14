@@ -52,6 +52,7 @@ export default function ClientsPage() {
   const [debugInfo, setDebugInfo] = useState<string | null>(null)
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [filterStatut, setFilterStatut] = useState<string>('')
   const [filterKyc, setFilterKyc] = useState<string>('')
@@ -63,6 +64,7 @@ export default function ClientsPage() {
 
   const fetchClients = useCallback(async () => {
     setLoading(true)
+    setFetchError(null)
     try {
       let query = supabase
         .from('clients')
@@ -72,10 +74,16 @@ export default function ClientsPage() {
       if (filterStatut) query = query.eq('statut', filterStatut)
       if (filterKyc) query = query.eq('kyc_status', filterKyc)
 
-      const { data } = await query
-      setClients((data ?? []) as Client[])
+      const { data, error } = await query
+      if (error) {
+        setFetchError(error.message)
+        setClients([])
+      } else {
+        setClients((data ?? []) as Client[])
+      }
     } catch (err) {
-      console.error('fetchClients error:', err)
+      const msg = err instanceof Error ? err.message : 'Erreur inconnue'
+      setFetchError(msg)
       setClients([])
     } finally {
       setLoading(false)
@@ -156,6 +164,13 @@ export default function ClientsPage() {
           {filtered.length} résultat{filtered.length > 1 ? 's' : ''}
         </span>
       </div>
+
+      {/* Erreur de chargement */}
+      {fetchError && (
+        <div style={{ backgroundColor: '#fef3c7', border: '1px solid #f59e0b', padding: '12px 16px', marginBottom: '16px', fontFamily: 'monospace', fontSize: '13px', color: '#92400e' }}>
+          ⚠ Erreur Supabase : {fetchError}
+        </div>
+      )}
 
       {/* Tableau */}
       <div style={{ ...cardBase, boxShadow: shadows.sm, overflow: 'hidden' }}>

@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useState } from 'react'
 import { useClient } from '@/lib/ClientContext'
 import {
   colors, fonts, fontSizes, fontWeights, spacing,
@@ -25,6 +26,7 @@ interface ClientTabsProps {
 export default function ClientTabs({ clientId }: ClientTabsProps) {
   const pathname = usePathname()
   const { dirty, saving, saveErrors, saveAll, clearErrors } = useClient()
+  const [saved, setSaved] = useState(false)
 
   const base = `/clients/${clientId}`
 
@@ -36,7 +38,8 @@ export default function ClientTabs({ clientId }: ClientTabsProps) {
   const handleSave = async () => {
     const { errors } = await saveAll()
     if (errors.length === 0) {
-      // Flash de succès géré visuellement via le bouton
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
     }
   }
 
@@ -76,9 +79,11 @@ export default function ClientTabs({ clientId }: ClientTabsProps) {
             padding: `8px 20px`,
             opacity: (dirty.size === 0 || saving) ? 0.5 : 1,
             cursor: dirty.size === 0 ? 'default' : 'pointer',
+            backgroundColor: saved ? colors.success : colors.gold,
+            transition: 'background-color 0.3s',
           }}
         >
-          {saving ? 'Sauvegarde...' : 'Sauvegarder'}
+          {saving ? 'Sauvegarde...' : saved ? '✓ Sauvegardé' : 'Sauvegarder'}
         </button>
       </div>
     </div>

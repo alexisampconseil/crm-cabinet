@@ -11,7 +11,7 @@ import {
 // Valeur par défaut quand famille est null
 const EMPTY_FAMILLE: Partial<Famille> = {
   civilite: null, nom: null, prenom: null, lieu_naissance: null,
-  date_naissance: null, nationalite: 'Française', situation: null,
+  code_postal_naissance: null, date_naissance: null, nationalite: 'Française', situation: null,
   regime_matrimonial: null, date_union: null, adresse: null,
   code_postal: null, ville: null, email: null, telephone: null,
   profession: null, employeur: null, categorie_professionnelle: null,
@@ -64,6 +64,7 @@ export default function FamillePage() {
           <Field label="Prénom"><TextIn val={famille.prenom} onChange={setF('prenom')} /></Field>
           <Field label="Nom"><TextIn val={famille.nom} onChange={setF('nom')} /></Field>
           <Field label="Lieu de naissance"><TextIn val={famille.lieu_naissance} onChange={setF('lieu_naissance')} /></Field>
+          <Field label="Code postal de naissance"><TextIn val={famille.code_postal_naissance} onChange={setF('code_postal_naissance')} /></Field>
           <Field label="Date de naissance"><TextIn type="date" val={famille.date_naissance} onChange={setF('date_naissance')} /></Field>
           <Field label="Nationalité"><TextIn val={famille.nationalite} onChange={setF('nationalite')} /></Field>
         </div>

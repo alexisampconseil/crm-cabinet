@@ -85,15 +85,18 @@ export default async function ClientLayout({ children, params }: Props) {
   async function saveClient(data: Partial<Client>) {
     'use server'
     const sb = await createServerSupabase()
-    const { error } = await sb.from('clients').update(data).eq('id', clientId)
+    // Retirer les champs gérés par la DB (id, timestamps)
+    const { id: _id, created_at: _ca, updated_at: _ua, ...updateData } = data
+    const { error } = await sb.from('clients').update(updateData).eq('id', clientId)
     if (error) throw new Error(error.message)
   }
 
   async function saveFamille(data: Partial<Famille>) {
     'use server'
     const sb = await createServerSupabase()
+    const { id: _id, client_id: _cid, created_at: _ca, updated_at: _ua, ...upsertData } = data
     const { error } = await sb.from('famille')
-      .upsert({ ...data, client_id: clientId }, { onConflict: 'client_id' })
+      .upsert({ ...upsertData, client_id: clientId }, { onConflict: 'client_id' })
     if (error) throw new Error(error.message)
   }
 
@@ -166,16 +169,18 @@ export default async function ClientLayout({ children, params }: Props) {
   async function saveFiscalite(data: Partial<Fiscalite>) {
     'use server'
     const sb = await createServerSupabase()
+    const { id: _id, client_id: _cid, created_at: _ca, updated_at: _ua, ...upsertData } = data
     const { error } = await sb.from('fiscalite')
-      .upsert({ ...data, client_id: clientId }, { onConflict: 'client_id' })
+      .upsert({ ...upsertData, client_id: clientId }, { onConflict: 'client_id' })
     if (error) throw new Error(error.message)
   }
 
   async function savePrevoyance(data: Partial<Prevoyance>) {
     'use server'
     const sb = await createServerSupabase()
+    const { id: _id, client_id: _cid, created_at: _ca, updated_at: _ua, ...upsertData } = data
     const { error } = await sb.from('prevoyance')
-      .upsert({ ...data, client_id: clientId }, { onConflict: 'client_id' })
+      .upsert({ ...upsertData, client_id: clientId }, { onConflict: 'client_id' })
     if (error) throw new Error(error.message)
   }
 
