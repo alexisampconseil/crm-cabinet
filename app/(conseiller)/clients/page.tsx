@@ -63,17 +63,23 @@ export default function ClientsPage() {
 
   const fetchClients = useCallback(async () => {
     setLoading(true)
-    let query = supabase
-      .from('clients')
-      .select('*')
-      .order('nom', { ascending: true })
+    try {
+      let query = supabase
+        .from('clients')
+        .select('*')
+        .order('nom', { ascending: true })
 
-    if (filterStatut) query = query.eq('statut', filterStatut)
-    if (filterKyc) query = query.eq('kyc_status', filterKyc)
+      if (filterStatut) query = query.eq('statut', filterStatut)
+      if (filterKyc) query = query.eq('kyc_status', filterKyc)
 
-    const { data } = await query
-    setClients((data ?? []) as Client[])
-    setLoading(false)
+      const { data } = await query
+      setClients((data ?? []) as Client[])
+    } catch (err) {
+      console.error('fetchClients error:', err)
+      setClients([])
+    } finally {
+      setLoading(false)
+    }
   }, [filterStatut, filterKyc])
 
   useEffect(() => { fetchClients() }, [fetchClients])

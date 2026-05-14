@@ -212,6 +212,7 @@ function LoginContent() {
             height={60}
             style={{ objectFit: 'contain', borderRadius: '4px' }}
             priority
+            unoptimized
           />
         </div>
 

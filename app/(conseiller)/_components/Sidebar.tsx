@@ -58,6 +58,7 @@ export default function Sidebar() {
           height={90}
           style={{ objectFit: 'contain', width: '100%', height: 'auto', borderRadius: '4px' }}
           priority
+          unoptimized
         />
       </div>
 

@@ -30,7 +30,7 @@ export default async function ClientLayout({ children }: { children: React.React
       <aside style={s.aside}>
         <div style={s.logoWrap}>
           <Image src="/logo.jpg" alt="AMP CONSEIL" width={90} height={45}
-            style={{ objectFit: 'contain', filter: 'brightness(0) invert(1)' }} priority />
+            style={{ objectFit: 'contain', filter: 'brightness(0) invert(1)' }} priority unoptimized />
         </div>
 
         {clientData && (
