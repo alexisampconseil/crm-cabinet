@@ -15,6 +15,7 @@ const TABS = [
   { label: 'Patrimoine',  segment: 'patrimoine' },
   { label: 'Fiscalité',   segment: 'fiscalite' },
   { label: 'Prévoyance',  segment: 'prevoyance' },
+  { label: 'Messagerie',  segment: 'messagerie' },
 ]
 
 interface ClientTabsProps {

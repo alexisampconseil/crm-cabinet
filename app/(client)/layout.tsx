@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase'
-import { colors, fonts, fontSizes, fontWeights, spacing, shadows, transitions, layout } from '@/lib/design-tokens'
+import { colors, fonts, fontSizes, fontWeights, spacing, layout } from '@/lib/design-tokens'
 import Image from 'next/image'
-import Link from 'next/link'
 import ClientLogout from './_components/ClientLogout'
+import ClientNav from './_components/ClientNav'
 
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createServerSupabase()
@@ -43,12 +43,7 @@ export default async function ClientLayout({ children }: { children: React.React
           </div>
         )}
 
-        <nav style={s.nav}>
-          <NavLink href="/tableau-de-bord" label="Tableau de bord" icon="📊" />
-          <NavLink href="/mon-kyc" label="Mon questionnaire" icon="📋" />
-          <NavLink href="/mes-documents" label="Mes documents" icon="📁" />
-          <NavLink href="/messagerie" label="Messagerie" icon="💬" />
-        </nav>
+        <ClientNav />
 
         <div style={s.footer}>
           <div style={s.divider} />
@@ -64,15 +59,6 @@ export default async function ClientLayout({ children }: { children: React.React
         </div>
       </main>
     </div>
-  )
-}
-
-function NavLink({ href, label, icon }: { href: string; label: string; icon: string }) {
-  return (
-    <Link href={href} style={s.link}>
-      <span style={{ fontSize: '1rem', flexShrink: 0 }}>{icon}</span>
-      {label}
-    </Link>
   )
 }
 
@@ -137,19 +123,6 @@ const s = {
     flexDirection: 'column' as const,
     gap: spacing[1],
   },
-  link: {
-    fontFamily: fonts.body,
-    fontSize: fontSizes.sm,
-    fontWeight: fontWeights.medium,
-    color: 'rgba(255,255,255,0.55)',
-    textDecoration: 'none',
-    display: 'flex',
-    alignItems: 'center',
-    gap: spacing[3],
-    padding: `${spacing[3]} ${spacing[5]}`,
-    transition: transitions.fast,
-    borderLeft: '3px solid transparent',
-  } as React.CSSProperties,
   footer: { padding: `0 0 ${spacing[5]}` },
   divider: { height: '1px', backgroundColor: 'rgba(255,255,255,0.07)', margin: `0 ${spacing[5]} ${spacing[3]}` },
   contact: {
