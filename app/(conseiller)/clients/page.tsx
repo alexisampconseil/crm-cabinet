@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import Link from 'next/link'
 import type { Client } from '@/lib/supabase'
@@ -49,13 +49,17 @@ function formatDate(d: string | null) {
 
 export default function ClientsPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const debugInfo = searchParams.get('debug')
+  const [debugInfo, setDebugInfo] = useState<string | null>(null)
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterStatut, setFilterStatut] = useState<string>('')
   const [filterKyc, setFilterKyc] = useState<string>('')
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    setDebugInfo(params.get('debug'))
+  }, [])
 
   const fetchClients = useCallback(async () => {
     setLoading(true)
