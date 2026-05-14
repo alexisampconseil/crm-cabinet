@@ -86,7 +86,7 @@ export default async function DashboardPage() {
           <div style={s.rule} />
           <span style={s.eyebrowText}>Vue d'ensemble</span>
         </div>
-        <h1 style={s.title}>Tableau de bord</h1>
+        <h1 style={s.title}>Tableau de bord v2</h1>
       </div>
 
       {/* KPI Cards */}
