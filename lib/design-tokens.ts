@@ -40,8 +40,8 @@ export const colors = {
 } as const
 
 export const fonts = {
-  body: "'DM Sans', sans-serif",
-  heading: "'Cormorant Garamond', serif",
+  body: "'Lato', sans-serif",
+  heading: "'Playfair Display', serif",
 } as const
 
 export const fontWeights = {
