@@ -20,18 +20,8 @@ export async function proxy(request: NextRequest) {
   // Laisser passer les API routes (elles vérifient leur propre auth)
   if (isApiPath(pathname)) return NextResponse.next()
 
-  // Laisser passer les routes publiques
+  // Laisser passer les routes publiques sans vérification
   if (isPublicPath(pathname)) {
-    // Si déjà authentifié et sur /login → rediriger vers le bon espace
-    if (pathname === '/login') {
-      const roleCookie = request.cookies.get('amp_role')?.value
-      if (roleCookie === 'conseiller') {
-        return NextResponse.redirect(new URL('/dashboard', request.url))
-      }
-      if (roleCookie === 'client') {
-        return NextResponse.redirect(new URL('/tableau-de-bord', request.url))
-      }
-    }
     return NextResponse.next()
   }
 
@@ -62,7 +52,9 @@ export async function proxy(request: NextRequest) {
   if (!user) {
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('next', pathname)
-    return NextResponse.redirect(loginUrl)
+    const redirectResponse = NextResponse.redirect(loginUrl)
+    redirectResponse.cookies.delete('amp_role')
+    return redirectResponse
   }
 
   // Vérification de rôle par zone
@@ -73,6 +65,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/clients') ||
     pathname.startsWith('/conformite') ||
     pathname.startsWith('/catalogue') ||
+    pathname.startsWith('/gouvernance') ||
     pathname.startsWith('/portefeuilles') ||
     pathname.startsWith('/agenda') ||
     pathname.startsWith('/documents') ||

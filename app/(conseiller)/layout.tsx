@@ -20,7 +20,8 @@ export default async function ConseillerLayout({
     .eq('user_id', user.id)
     .single()
 
-  if (roleData?.role !== 'conseiller') redirect('/tableau-de-bord')
+  if (!roleData) redirect('/login')
+  if (roleData.role !== 'conseiller') redirect('/tableau-de-bord')
 
   return (
     <div style={s.root}>

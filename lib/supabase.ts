@@ -12,6 +12,33 @@ export type KycContexte = 'prospect' | 'maj_annuelle' | 'modif_situation'
 export type DossierStatut = 'en_cours' | 'suspendu' | 'cloture' | 'annule'
 export type EtapeStatut = 'pending' | 'en_cours' | 'valide' | 'bloque'
 
+// ── Gouvernance Produits ────────────────────────────────────────────────────
+
+export type CategorieReglementaire =
+  | 'OPCVM'
+  | 'FIA'
+  | 'assurance_vie'
+  | 'capitalisation'
+  | 'per_individuel'
+  | 'per_collectif'
+  | 'scpi'
+  | 'opci'
+  | 'produit_structure'
+  | 'autre'
+
+export type StatutDocumentProduit = 'actif' | 'archive' | 'expire'
+export type StatutConformite     = 'conforme' | 'en_revision' | 'suspendu' | 'non_conforme'
+export type StatutValidation     = 'a_valider' | 'valide' | 'a_revoir'
+export type SourceMarcheCible    = 'emetteur' | 'deduit_ia' | 'manuel'
+export type FrequenceRevue       = 'trimestrielle' | 'semestrielle' | 'annuelle'
+
+export type ConnaissanceMC    = 'basique' | 'informe' | 'expert'
+export type ExperienceMC      = 'faible' | 'moyenne' | 'elevee'
+export type CapacitePertesMC  = 'aucune_perte' | 'pertes_limitees' | 'perte_capital' | 'pertes_superieures'
+export type ToleranceRisqueMC = 'tres_faible' | 'faible' | 'moyenne' | 'elevee' | 'tres_elevee'
+export type HorizonMC         = 'moins_2_ans' | 'entre_2_et_5_ans' | 'plus_5_ans'
+export type SensibiliteESGMC  = 'aucune' | 'moderee' | 'forte'
+
 export interface UserRole {
   id: string
   user_id: string
@@ -207,6 +234,14 @@ export interface Produit {
   nom: string
   societe_gestion: string | null
   categorie: 'AV' | 'SCPI' | 'PER' | 'Capitalisation'
+  categorie_reglementaire: CategorieReglementaire | null
+  isin: string | null
+  frais_entree: number | null
+  frais_gestion: number | null
+  frais_sortie: number | null
+  duree_detention_min: number | null
+  date_agrement: string | null
+  encours_geres: number | null
   sri: number | null
   rendement_n1: number | null
   rendement_3ans: number | null
@@ -223,8 +258,12 @@ export interface ProduitDocument {
   id: string
   produit_id: string
   type: 'DICI' | 'Brochure' | 'Rapport' | 'Autre'
-  url: string
+  url: string | null
   date_document: string | null
+  version: string | null
+  statut: StatutDocumentProduit
+  date_expiration: string | null
+  storage_path: string | null
 }
 
 export interface KycToken {
@@ -262,6 +301,149 @@ export interface AccessLog {
   resource: string | null
   ip: string | null
   created_at: string
+}
+
+// ── Sous-types JSONB — Gouvernance Produits ─────────────────────────────────
+
+export interface ExtraitSource {
+  document_id: string
+  page: number | null
+  texte: string
+}
+
+export interface JustificationIA {
+  connaissance?: string
+  experience?: string
+  capacite_pertes?: string
+  tolerance_risque?: string
+  horizon?: string
+  sensibilite_esg?: string
+}
+
+export interface MappingIADimension {
+  valeur_source: string | null
+  valeur_normalisee: string | null
+  confiance: number | null
+  justification: string | null
+}
+
+export interface MappingIAMarche {
+  connaissance?: MappingIADimension
+  experience?: MappingIADimension
+  capacite_pertes?: MappingIADimension
+  tolerance_risque?: MappingIADimension
+  horizon?: MappingIADimension
+  sensibilite_esg?: MappingIADimension
+}
+
+export interface MappingIA {
+  positif: MappingIAMarche
+  negatif: MappingIAMarche
+}
+
+export type EmetteurBrut = Record<string, unknown>
+
+// ── Interface principale : produits_gouvernance ──────────────────────────────
+
+export interface ProduitGouvernance {
+  id: string
+  produit_id: string
+
+  statut_conformite: StatutConformite
+
+  // Marché cible source (brut)
+  mc_emetteur_texte: string | null
+  mc_emetteur_brut: EmetteurBrut | null
+
+  // Marché cible positif — référentiel interne
+  mc_pos_connaissance: ConnaissanceMC | null
+  mc_pos_experience: ExperienceMC | null
+  mc_pos_capacite_pertes: CapacitePertesMC | null
+  mc_pos_tolerance_risque: ToleranceRisqueMC | null
+  mc_pos_horizon: HorizonMC | null
+  mc_pos_sensibilite_esg: SensibiliteESGMC | null
+
+  // Marché cible négatif — référentiel interne
+  mc_neg_connaissance: ConnaissanceMC | null
+  mc_neg_experience: ExperienceMC | null
+  mc_neg_capacite_pertes: CapacitePertesMC | null
+  mc_neg_tolerance_risque: ToleranceRisqueMC | null
+  mc_neg_horizon: HorizonMC | null
+  mc_neg_sensibilite_esg: SensibiliteESGMC | null
+
+  // Champs narratifs
+  public_exclu: string | null
+  conditions_acces: string | null
+  conflits_interet: string | null
+  notes_gouvernance: string | null
+  document_gouvernance_url: string | null
+
+  // Revues périodiques
+  frequence_revue: FrequenceRevue | null
+  date_derniere_revue: string | null
+  date_prochaine_revue: string | null
+  responsable_revue: string | null
+  alerte_revue: boolean
+
+  // Traçabilité IA
+  source_marche_cible: SourceMarcheCible
+  source_document_id: string | null
+  extraits_sources: ExtraitSource[] | null
+  justifications_ia: JustificationIA | null
+  mapping_ia: MappingIA | null
+  score_confiance_ia: number | null
+  date_analyse_ia: string | null
+  modele_ia: string | null
+
+  // Validation
+  statut_validation: StatutValidation
+  motif_signalement: string | null
+  valide_par: string | null
+  valide_le: string | null
+
+  created_at: string
+  updated_at: string
+}
+
+// ── Extraction documentaire ─────────────────────────────────────────────────
+
+export type StatutAnalyseIA = 'en_attente' | 'en_cours' | 'analyse_terminee' | 'erreur'
+export type ExtractionMethode = 'pdf_parse' | 'pdfjs' | 'ocr' | 'manuel' | 'autre'
+
+export interface DocumentExtrait {
+  id: string
+  document_id: string
+  texte_extrait: string
+  nb_pages: number | null
+  hash_fichier: string | null
+  extraction_methode: ExtractionMethode | null
+  date_extraction: string
+  statut_analyse: StatutAnalyseIA
+  gouvernance_id: string | null
+  modele_ia: string | null
+  version_prompt: string | null
+  date_analyse_ia: string | null
+  tokens_entree: number | null
+  tokens_sortie: number | null
+  analyse_resultat_brut: Record<string, unknown> | null
+  erreur_analyse: string | null
+  created_at: string
+}
+
+// ── Interface historique : produits_gouvernance_historique ───────────────────
+
+export interface ProduitGouvernanceHistorique {
+  id: string
+  gouvernance_id: string
+  produit_id: string
+  snapshot: ProduitGouvernance
+  modifie_par: string | null
+  modifie_le: string
+  motif: string | null
+  statut_conformite_avant: StatutConformite | null
+  statut_conformite_apres: StatutConformite | null
+  statut_validation_avant: StatutValidation | null
+  statut_validation_apres: StatutValidation | null
 }
 
 // ============================================================
@@ -829,6 +1011,241 @@ export async function getProduit(id: string) {
     .single()
   if (error) throw error
   return data as Produit & { produits_documents: ProduitDocument[] }
+}
+
+// ============================================================
+// CRUD — GOUVERNANCE PRODUITS
+// ============================================================
+
+export async function getGouvernance(produitId: string): Promise<ProduitGouvernance | null> {
+  const supabase = await createServerSupabase()
+  const { data, error } = await supabase
+    .from('produits_gouvernance')
+    .select('*')
+    .eq('produit_id', produitId)
+    .single()
+  if (error && error.code !== 'PGRST116') throw error
+  return data as ProduitGouvernance | null
+}
+
+export async function upsertGouvernance(
+  produitId: string,
+  input: Partial<Omit<ProduitGouvernance, 'id' | 'produit_id' | 'created_at' | 'updated_at' | 'valide_par' | 'valide_le'>>
+): Promise<ProduitGouvernance> {
+  const supabase = await createServerSupabase()
+  const { data, error } = await supabase
+    .from('produits_gouvernance')
+    .upsert(
+      { ...input, produit_id: produitId, statut_validation: 'a_valider' },
+      { onConflict: 'produit_id' }
+    )
+    .select()
+    .single()
+  if (error) throw error
+  return data as ProduitGouvernance
+}
+
+export async function validerGouvernance(produitId: string): Promise<ProduitGouvernance> {
+  const supabase = await createServerSupabase()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Non authentifié')
+  const { data, error } = await supabase
+    .from('produits_gouvernance')
+    .update({
+      statut_validation: 'valide',
+      motif_signalement: null,  // effacement du motif précédent lors de la validation
+      valide_par: user.id,
+      valide_le: new Date().toISOString(),
+    })
+    .eq('produit_id', produitId)
+    .select()
+    .single()
+  if (error) throw error
+  return data as ProduitGouvernance
+}
+
+export async function signalerGouvernance(
+  produitId: string,
+  motif?: string
+): Promise<ProduitGouvernance> {
+  const supabase = await createServerSupabase()
+  // Le motif est stocké sur la ligne — le trigger fn_snapshot_gouvernance
+  // l'archive automatiquement dans produits_gouvernance_historique via to_jsonb(OLD).
+  const { data, error } = await supabase
+    .from('produits_gouvernance')
+    .update({
+      statut_validation: 'a_revoir',
+      motif_signalement: motif ?? null,
+    })
+    .eq('produit_id', produitId)
+    .select()
+    .single()
+  if (error) throw error
+  return data as ProduitGouvernance
+}
+
+export async function getGouvernanceHistorique(
+  gouvernanceId: string
+): Promise<ProduitGouvernanceHistorique[]> {
+  const supabase = await createServerSupabase()
+  const { data, error } = await supabase
+    .from('produits_gouvernance_historique')
+    .select('*')
+    .eq('gouvernance_id', gouvernanceId)
+    .order('modifie_le', { ascending: false })
+  if (error) throw error
+  return data as ProduitGouvernanceHistorique[]
+}
+
+export async function getProduitsAvecGouvernance(): Promise<
+  (Produit & { gouvernance: ProduitGouvernance | null })[]
+> {
+  const supabase = await createServerSupabase()
+  const { data, error } = await supabase
+    .from('produits')
+    .select('*, gouvernance:produits_gouvernance(*)')
+    .eq('actif', true)
+    .order('nom')
+  if (error) throw error
+  return data as (Produit & { gouvernance: ProduitGouvernance | null })[]
+}
+
+export async function getProduitsAlerteRevue(): Promise<
+  (Produit & { gouvernance: ProduitGouvernance })[]
+> {
+  const supabase = await createServerSupabase()
+  const today = new Date().toISOString().split('T')[0]
+  const { data, error } = await supabase
+    .from('produits_gouvernance')
+    .select('*, produit:produits(*)')
+    .or(`alerte_revue.eq.true,date_prochaine_revue.lte.${today}`)
+    .order('date_prochaine_revue', { ascending: true })
+  if (error) throw error
+  return (data as { produit: Produit; [key: string]: unknown }[]).map(row => {
+    const { produit, ...gouvernance } = row
+    return { ...produit, gouvernance: gouvernance as unknown as ProduitGouvernance }
+  })
+}
+
+export async function getProduitsParStatutValidation(
+  statut: StatutValidation
+): Promise<(Produit & { gouvernance: ProduitGouvernance })[]> {
+  const supabase = await createServerSupabase()
+  const { data, error } = await supabase
+    .from('produits_gouvernance')
+    .select('*, produit:produits(*)')
+    .eq('statut_validation', statut)
+    .order('updated_at', { ascending: false })
+  if (error) throw error
+  return (data as { produit: Produit; [key: string]: unknown }[]).map(row => {
+    const { produit, ...gouvernance } = row
+    return { ...produit, gouvernance: gouvernance as unknown as ProduitGouvernance }
+  })
+}
+
+// ============================================================
+// CRUD — EXTRACTION DOCUMENTAIRE
+// ============================================================
+
+export async function getDocumentsExtraits(documentId: string): Promise<DocumentExtrait[]> {
+  const supabase = await createServerSupabase()
+  const { data, error } = await supabase
+    .from('documents_extraits')
+    .select('*')
+    .eq('document_id', documentId)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data as DocumentExtrait[]
+}
+
+export async function findExtraitByHash(
+  documentId: string,
+  hash: string
+): Promise<DocumentExtrait | null> {
+  const supabase = await createServerSupabase()
+  const { data, error } = await supabase
+    .from('documents_extraits')
+    .select('*')
+    .eq('document_id', documentId)
+    .eq('hash_fichier', hash)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  return data as DocumentExtrait | null
+}
+
+export async function insertDocumentExtrait(input: {
+  document_id: string
+  texte_extrait: string
+  nb_pages?: number
+  hash_fichier?: string
+  extraction_methode?: ExtractionMethode
+}): Promise<DocumentExtrait> {
+  const supabase = await createServerSupabase()
+  const { data, error } = await supabase
+    .from('documents_extraits')
+    .insert({
+      document_id:        input.document_id,
+      texte_extrait:      input.texte_extrait,
+      nb_pages:           input.nb_pages ?? null,
+      hash_fichier:       input.hash_fichier ?? null,
+      extraction_methode: input.extraction_methode ?? null,
+      statut_analyse:     'en_attente',
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return data as DocumentExtrait
+}
+
+export async function marquerAnalyseEnCours(extraitId: string): Promise<void> {
+  const supabase = await createServerSupabase()
+  const { error } = await supabase
+    .from('documents_extraits')
+    .update({ statut_analyse: 'en_cours' })
+    .eq('id', extraitId)
+  if (error) throw error
+}
+
+export async function marquerAnalyseTerminee(
+  extraitId: string,
+  input: {
+    gouvernance_id: string
+    modele_ia: string
+    version_prompt: string
+    analyse_resultat_brut: Record<string, unknown>
+    tokens_entree?: number
+    tokens_sortie?: number
+  }
+): Promise<void> {
+  const supabase = await createServerSupabase()
+  const { error } = await supabase
+    .from('documents_extraits')
+    .update({
+      statut_analyse:        'analyse_terminee',
+      gouvernance_id:        input.gouvernance_id,
+      modele_ia:             input.modele_ia,
+      version_prompt:        input.version_prompt,
+      date_analyse_ia:       new Date().toISOString(),
+      tokens_entree:         input.tokens_entree ?? null,
+      tokens_sortie:         input.tokens_sortie ?? null,
+      analyse_resultat_brut: input.analyse_resultat_brut,
+    })
+    .eq('id', extraitId)
+  if (error) throw error
+}
+
+export async function marquerAnalyseErreur(extraitId: string, erreur: string): Promise<void> {
+  const supabase = await createServerSupabase()
+  const { error } = await supabase
+    .from('documents_extraits')
+    .update({
+      statut_analyse: 'erreur',
+      erreur_analyse: erreur,
+    })
+    .eq('id', extraitId)
+  if (error) throw error
 }
 
 // ============================================================

@@ -16,7 +16,8 @@ export default async function ClientLayout({ children }: { children: React.React
     .eq('user_id', user.id)
     .single()
 
-  if (roleData?.role !== 'client') redirect('/dashboard')
+  if (!roleData) redirect('/login')
+  if (roleData.role !== 'client') redirect('/dashboard')
 
   const { data: clientData } = await supabase
     .from('clients')

@@ -24,7 +24,7 @@ const NAV = [
     section: 'Activité',
     items: [
       { href: '/conformite',    label: 'Conformité',    icon: IconShield },
-      { href: '/catalogue',     label: 'Catalogue',     icon: IconCatalogue },
+      { href: '/produits',      label: 'Produits',      icon: IconProduits },
       { href: '/portefeuilles', label: 'Portefeuilles', icon: IconChart },
       { href: '/agenda',        label: 'Agenda',        icon: IconCalendar },
     ],
@@ -182,8 +182,17 @@ function IconShield({ active }: { active?: boolean }) {
   return <Icon active={active} path="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
 }
 
-function IconCatalogue({ active }: { active?: boolean }) {
-  return <Icon active={active} path="M4 6h16M4 10h16M4 14h16M4 18h16" />
+function IconProduits({ active }: { active?: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+      stroke={active ? colors.gold : 'rgba(255,255,255,0.45)'}
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+      style={{ flexShrink: 0 }}>
+      <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+      <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+      <line x1="12" y1="22.08" x2="12" y2="12"/>
+    </svg>
+  )
 }
 
 function IconChart({ active }: { active?: boolean }) {
