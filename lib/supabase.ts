@@ -98,6 +98,9 @@ export interface Famille {
   conjoint_employeur: string | null
   conjoint_email: string | null
   conjoint_telephone: string | null
+  conjoint_categorie_professionnelle: string | null
+  pays_naissance: string | null
+  conjoint_pays_naissance: string | null
   created_at: string
   updated_at: string
 }
@@ -121,6 +124,7 @@ export interface Objectif {
   besoin_liquidites: 'faible' | 'moyen' | 'fort' | 'tres_fort' | null
   montant_cible: number | null
   priorite: number
+  collecte_session_id: string | null
   created_at: string
 }
 
@@ -176,6 +180,8 @@ export interface Fiscalite {
   tranche_ir: '0' | '11' | '30' | '41' | '45' | null
   revenu_fiscal: number | null
   ifi: number | null
+  nombre_parts: number | null
+  option_bareme: boolean | null
   dispositifs: string[]
   created_at: string
   updated_at: string
@@ -273,6 +279,7 @@ export interface KycToken {
   expires_at: string
   used_at: string | null
   contexte: KycContexte
+  collecte_session_id: string | null
   created_at: string
 }
 

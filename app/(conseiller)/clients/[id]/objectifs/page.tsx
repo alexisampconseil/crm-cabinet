@@ -17,6 +17,7 @@ const EMPTY_OBJECTIF = (): Objectif => ({
   besoin_liquidites: null,
   montant_cible: null,
   priorite: 1,
+  collecte_session_id: null,
   created_at: new Date().toISOString(),
 })
 

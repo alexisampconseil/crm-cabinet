@@ -26,6 +26,8 @@ const TRANCHE_LABELS: Record<string, string> = {
 const EMPTY_FISCALITE: Omit<Fiscalite, 'id' | 'client_id' | 'created_at' | 'updated_at'> = {
   tranche_ir: null,
   revenu_fiscal: null,
+  nombre_parts: null,
+  option_bareme: null,
   ifi: null,
   dispositifs: [],
 }
