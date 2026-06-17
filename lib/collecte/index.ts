@@ -6,6 +6,8 @@ export type {
   // Session
   CollecteSessionStatut,
   CollecteSessionPerimetre,
+  CollecteSessionType,
+  CollecteSessionCanal,
   CollecteSession,
   CollecteSessionCreate,
   CreeSessionParams,
@@ -60,6 +62,8 @@ export type {
 export { creerSession } from './services/session'
 export { ouvrirSession } from './services/envoi'
 export { buildSnapshotPrefill } from './services/prefill'
+export { detecterEcarts } from './services/detection'
+export type { DetectionResult } from './services/detection'
 
 // ── Repository — sessions ─────────────────────────────────────────────────────
 export {
@@ -89,3 +93,11 @@ export {
   deleteReponse,
   deleteReponsesByGroupe,
 } from './repository/reponses'
+
+// ── Repository — écarts ───────────────────────────────────────────────────────
+export { getEcartsBySession, deciderEcart, countEcartsARevoir } from './repository/ecarts'
+
+// ── Service — application au référentiel (Phase 7) ───────────────────────────
+export { appliquerEcarts } from './services/application'
+export type { ApplicationResult } from './services/application'
+export type { ColonneType } from './mapping'

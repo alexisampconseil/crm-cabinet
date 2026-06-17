@@ -17,13 +17,27 @@ export type CollecteSessionStatut =
 
 export type CollecteSessionPerimetre = 'client_seul' | 'foyer'
 
+export type CollecteSessionType =
+  | 'bilan_initial'
+  | 'mise_a_jour'
+  | 'pre_conseil'
+  | 'verification_annuelle'
+
+export type CollecteSessionCanal =
+  | 'portail_client'
+  | 'entretien'
+  | 'import_manuel'
+
 export interface CollecteSession {
   id: string
   client_id: string
+  type: CollecteSessionType
+  canal: CollecteSessionCanal
   perimetre: CollecteSessionPerimetre
   statut: CollecteSessionStatut
-  snapshot_prefill: SnapshotPrefill
+  snapshot_prefill: SnapshotPrefill | null
   questionnaire_version_id: string | null
+  kyc_token_id: string | null
   nb_ecarts_detectes: number
   nb_ecarts_traites: number
   date_ouverture: string | null
@@ -36,6 +50,8 @@ export interface CollecteSession {
 
 export interface CollecteSessionCreate {
   client_id: string
+  type?: CollecteSessionType
+  canal?: CollecteSessionCanal
   perimetre?: CollecteSessionPerimetre
   notes?: string
 }
@@ -81,6 +97,15 @@ export interface QuestionnaireQuestion {
   obligatoire: boolean
   repete: boolean
   placeholder?: string
+  // Chemin de préremplissage dans snapshot_prefill.
+  // Pour les questions non-répétables : chemin absolu depuis la racine,
+  //   ex : "identite.nom", "fiscalite.tranche_ir".
+  // Pour les questions répétables (repete=true) : chemin relatif à l'item courant,
+  //   ex : "item.libelle", "item.montant".
+  prefill_path?: string
+  // Valeurs proposées pour les types "liste" et "multi_liste".
+  // Stockées dans le JSONB de la version pour que le questionnaire soit autonome.
+  options?: string[]
   conditions: QuestionnaireCondition[]
 }
 
@@ -89,6 +114,11 @@ export interface QuestionnaireBloc {
   libelle: string
   ordre: number
   repete: boolean
+  // Chemin dans snapshot_prefill vers le tableau source des instances répétables.
+  // Présent sur les blocs repete=true ET sur les blocs mixtes (repete=false avec
+  // des questions repete=true à l'intérieur, ex: foyer.enfants, prevoyance.contrats).
+  // Convention : chemin dot depuis la racine de SnapshotPrefill.
+  repete_source?: string
   questions: QuestionnaireQuestion[]
 }
 
@@ -382,6 +412,8 @@ export interface SnapshotPrefill {
 
 export interface CreeSessionParams {
   clientId: string
+  type?: CollecteSessionType
+  canal?: CollecteSessionCanal
   perimetre?: CollecteSessionPerimetre
   notes?: string
 }

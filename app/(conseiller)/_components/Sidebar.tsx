@@ -24,6 +24,7 @@ const NAV = [
     section: 'Activité',
     items: [
       { href: '/conformite',    label: 'Conformité',    icon: IconShield },
+      { href: '/collecte',      label: 'Collecte',      icon: IconCollecte },
       { href: '/produits',      label: 'Produits',      icon: IconProduits },
       { href: '/portefeuilles', label: 'Portefeuilles', icon: IconChart },
       { href: '/agenda',        label: 'Agenda',        icon: IconCalendar },
@@ -180,6 +181,17 @@ function IconClients({ active }: { active?: boolean }) {
 
 function IconShield({ active }: { active?: boolean }) {
   return <Icon active={active} path="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+}
+
+function IconCollecte({ active }: { active?: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+      stroke={active ? colors.gold : 'rgba(255,255,255,0.45)'}
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+      style={{ flexShrink: 0 }}>
+      <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+    </svg>
+  )
 }
 
 function IconProduits({ active }: { active?: boolean }) {

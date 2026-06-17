@@ -22,6 +22,8 @@ export async function creerSession(
     {
       client_id: params.clientId,
       perimetre: params.perimetre ?? 'client_seul',
+      type: params.type,
+      canal: params.canal,
       notes: params.notes,
     },
     supabase

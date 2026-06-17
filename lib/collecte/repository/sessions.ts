@@ -69,6 +69,8 @@ export async function createSession(
     .insert({
       client_id: input.client_id,
       perimetre: input.perimetre ?? 'client_seul',
+      type: input.type ?? 'bilan_initial',
+      canal: input.canal ?? 'entretien',
       notes: input.notes ?? null,
     })
     .select()
