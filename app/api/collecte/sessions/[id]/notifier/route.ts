@@ -98,7 +98,18 @@ export async function POST(
 
   if (!client) return NextResponse.json({ error: 'Client introuvable' }, { status: 404 })
 
-  if (!client.email) {
+  // L'email "principal" est saisi dans l'onglet Famille (famille.email), pas
+  // forcément dans clients.email — les deux colonnes existent et peuvent diverger.
+  // Même règle de priorité que côté front (GenerateCollecteLinkButton / ClientHeader).
+  const { data: famille } = await supabaseAdmin
+    .from('famille')
+    .select('email')
+    .eq('client_id', session.client_id)
+    .maybeSingle()
+
+  const emailContact = famille?.email ?? client.email
+
+  if (!emailContact) {
     return NextResponse.json({ error: "Ce client n'a pas d'adresse email" }, { status: 422 })
   }
 
@@ -106,7 +117,7 @@ export async function POST(
 
   try {
     const emailPayload = buildCollecteEmail(client.prenom, client.nom, url, token.expires_at)
-    emailPayload.to[0].email = client.email
+    emailPayload.to[0].email = emailContact
 
     await sendBrevoEmail(emailPayload)
 
@@ -119,7 +130,7 @@ export async function POST(
 
     return NextResponse.json({
       success:        true,
-      email_sent_to:  client.email,
+      email_sent_to:  emailContact,
       url,
       expires_at:     token.expires_at,
     })

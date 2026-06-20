@@ -34,8 +34,13 @@ function formatEuros(n: number) {
 }
 
 export default function ClientHeader({ clientId: _ }: { clientId: string }) {
-  const { data: { client }, dirty, saving, saveErrors, saveAll, clearErrors } = useClient()
+  const { data: { client, famille }, dirty, saving, saveErrors, saveAll, clearErrors } = useClient()
   const [saved, setSaved] = useState(false)
+
+  // L'email "principal" du client est saisi dans l'onglet Famille (famille.email),
+  // pas dans clients.email — les deux colonnes existent et peuvent diverger.
+  // Le bouton d'envoi doit utiliser la même source que ce que le conseiller voit.
+  const emailContact = famille?.email ?? client.email
 
   const handleSave = async () => {
     clearErrors()
@@ -79,7 +84,7 @@ export default function ClientHeader({ clientId: _ }: { clientId: string }) {
             Profil {client.profil}
           </span>
         )}
-        <GenerateCollecteLinkButton clientId={client.id} kycStatus={client.kyc_status} email={client.email} />
+        <GenerateCollecteLinkButton clientId={client.id} kycStatus={client.kyc_status} email={emailContact} />
       </div>
 
       {/* Encours */}
