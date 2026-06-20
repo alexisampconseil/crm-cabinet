@@ -7,6 +7,7 @@ import {
   ouvrirSession,
   getSessionActive,
   getVersionActive,
+  buildCollecteUrl,
 } from '@/lib/collecte'
 
 const CreateLienSchema = z.object({
@@ -167,12 +168,16 @@ export async function POST(request: NextRequest) {
       resource: `client:${clientId}`,
     })
 
-    const url = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/collecte/${tokenRow.token}`
+    // Usage interne CRM (copier/ouvrir) : tolère localhost et retombe sur une URL
+    // relative si aucune base n'est configurée — le bouton reste fonctionnel en
+    // développement, mais le conseiller est averti que le lien ne marchera pas par email.
+    const lien = buildCollecteUrl(tokenRow.token, { allowLocalhost: true, fallbackRelative: true })
 
     return NextResponse.json(
       {
         token: tokenRow.token,
-        url,
+        url: lien.url,
+        ...(lien.warning && { warning: lien.warning }),
         expires_at: expiresAt,
         session: sessionOuverte,
         client: { id: client.id, nom: client.nom, prenom: client.prenom },

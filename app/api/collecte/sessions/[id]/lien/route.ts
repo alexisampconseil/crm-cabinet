@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { buildCollecteUrl } from '@/lib/collecte'
 
 // GET /api/collecte/sessions/:id/lien
 // Reconstruit l'URL du lien de collecte existant à partir du kyc_token déjà lié
@@ -46,10 +47,13 @@ export async function GET(
     return NextResponse.json({ error: 'Lien introuvable pour cette session' }, { status: 404 })
   }
 
-  const url = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/collecte/${token.token}`
+  // Usage interne CRM (copier/ouvrir) : tolère localhost et retombe sur une URL
+  // relative si aucune base n'est configurée, pour ne pas casser le bouton en dev.
+  const lien = buildCollecteUrl(token.token, { allowLocalhost: true, fallbackRelative: true })
 
   return NextResponse.json({
-    url,
+    url:        lien.url,
+    ...(lien.warning && { warning: lien.warning }),
     expires_at: token.expires_at,
     used_at:    token.used_at,
   })

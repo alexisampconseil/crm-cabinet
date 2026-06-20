@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { sendBrevoEmail, type BrevoEmailPayload } from '@/lib/email/brevo'
+import { buildCollecteUrl } from '@/lib/collecte'
 
 function buildCollecteEmail(
   prenom: string,
@@ -113,7 +114,13 @@ export async function POST(
     return NextResponse.json({ error: "Ce client n'a pas d'adresse email" }, { status: 422 })
   }
 
-  const url = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/collecte/${token.token}`
+  // URL absolue strictement requise — un email avec une URL relative ou localhost
+  // est inutilisable par le destinataire (cf. audit lien Brevo cassé).
+  const lien = buildCollecteUrl(token.token, { allowLocalhost: false, fallbackRelative: false })
+  if (lien.error) {
+    return NextResponse.json({ error: lien.error }, { status: 500 })
+  }
+  const url = lien.url
 
   try {
     const emailPayload = buildCollecteEmail(client.prenom, client.nom, url, token.expires_at)

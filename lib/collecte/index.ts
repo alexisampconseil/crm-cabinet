@@ -63,6 +63,8 @@ export { creerSession } from './services/session'
 export { ouvrirSession } from './services/envoi'
 export { buildSnapshotPrefill, computeSnapshotChecksum } from './services/prefill'
 export type { SnapshotChecksumInput } from './services/prefill'
+export { buildCollecteUrl } from './url'
+export type { BuildCollecteUrlOptions, BuildCollecteUrlResult } from './url'
 export { detecterEcarts } from './services/detection'
 export type { DetectionResult } from './services/detection'
 
