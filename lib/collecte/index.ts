@@ -96,9 +96,15 @@ export {
 } from './repository/reponses'
 
 // ── Repository — écarts ───────────────────────────────────────────────────────
-export { getEcartsBySession, deciderEcart, countEcartsARevoir } from './repository/ecarts'
+export {
+  getEcartsBySession,
+  deciderEcart,
+  deciderGroupeEcarts,
+  countEcartsARevoir,
+} from './repository/ecarts'
 
 // ── Service — application au référentiel (Phase 7) ───────────────────────────
 export { appliquerEcarts } from './services/application'
 export type { ApplicationResult } from './services/application'
-export type { ColonneType } from './mapping'
+export type { ColonneType, MappingEntry } from './mapping'
+export { NIVEAU_IMPACT_AJOUT, CHAMPS_REQUIS_AJOUT, COLONNES_OBLIGATOIRES_INSERT } from './mapping'

@@ -8,10 +8,12 @@
 //   soumis + N écarts → en_revue
 //
 // Limitations v1 (intentionnelles) :
-//   - Seul type_ecart = 'modification' (pas d'ajout ni de suppression)
+//   - type_ecart = 'modification' ou 'ajout' (pas de 'suppression')
+//   - 'ajout' : généré uniquement si reponse_metadata.nouvelle_instance=true ET
+//     au moins un champ requis (CHAMPS_REQUIS_AJOUT) est renseigné — sinon ignoré
 //   - valeur_proposee construit depuis reponse_valeur (string), pas reponse_metadata
 //   - Comparaison string normalisée (pas de tolérance numérique)
-//   - Groupe_instance_id absent du snapshot → ignoré (log warning)
+//   - Groupe_instance_id absent du snapshot sans flag nouvelle_instance → ignoré (log warning)
 //
 // Les fonctions resolveAbsolutePath / resolveItemField / getSnapshotArray
 // dupliquent délibérément la logique de _components/prefillResolver.ts
@@ -26,8 +28,9 @@ import type {
   QuestionnaireReponseBloc,
   QuestionnaireReponsePortee,
   SessionEcartNiveauImpact,
+  SessionEcartTypeEcart,
 } from '../types'
-import { ECART_MAPPING } from '../mapping'
+import { ECART_MAPPING, NIVEAU_IMPACT_AJOUT, CHAMPS_REQUIS_AJOUT, type MappingEntry } from '../mapping'
 
 // ── Types internes ────────────────────────────────────────────────────────────
 
@@ -56,12 +59,21 @@ interface EcartRow {
   entite_cible:       string
   colonne_cible:      string
   entite_id:          string | null
-  type_ecart:         'modification'
+  type_ecart:         SessionEcartTypeEcart
   valeur_reference:   { valeur: string | null }
   valeur_proposee:    { valeur: string | null }
   libelle_lisible:    string
   niveau_impact:      SessionEcartNiveauImpact
   statut:             'a_revoir'
+}
+
+// Une réponse candidate à un ajout — stashée pendant la boucle principale,
+// traitée après coup une fois tous les champs de l'instance connus (point 4 :
+// une instance vide/abandonnée ne doit générer aucun écart fantôme).
+interface CandidatAjout {
+  reponse:      { id: unknown; question_code: unknown; portee: unknown; reponse_valeur: unknown }
+  qEntry:       QuestionIndexEntry
+  mappingEntry: MappingEntry
 }
 
 // ── Fonctions utilitaires (privées) ───────────────────────────────────────────
@@ -113,13 +125,15 @@ function generateLibelle(
   portee:           string,
   snapshotNorm:     string,
   reponseNorm:      string,
-  instanceIndex?:   number
+  instanceIndex?:   number,
+  isAjout = false
 ): string {
   const porteeLabel    = portee === 'conjoint' ? ' (conjoint)' : ''
   const instanceLabel  = instanceIndex != null ? ` — Élément ${instanceIndex + 1}` : ''
-  const prev = snapshotNorm ? `« ${snapshotNorm} »` : '(vide)'
-  const next = reponseNorm  ? `« ${reponseNorm} »` : '(vide)'
-  return `${blocLibelle} — ${questionLibelle}${porteeLabel}${instanceLabel} : ${prev} → ${next}`
+  const prefix = isAjout ? 'Nouvel élément — ' : ''
+  const prev = isAjout ? '(nouveau)' : (snapshotNorm ? `« ${snapshotNorm} »` : '(vide)')
+  const next = reponseNorm ? `« ${reponseNorm} »` : '(vide)'
+  return `${prefix}${blocLibelle} — ${questionLibelle}${porteeLabel}${instanceLabel} : ${prev} → ${next}`
 }
 
 // ── Service principal ─────────────────────────────────────────────────────────
@@ -210,7 +224,7 @@ export async function detecterEcarts(
   // 6. Charger TOUTES les réponses de la session (y compris reponse_valeur null)
   const { data: reponses, error: reponsesError } = await supabase
     .from('questionnaire_reponses')
-    .select('id, bloc, question_code, portee, groupe_instance_id, reponse_valeur')
+    .select('id, bloc, question_code, portee, groupe_instance_id, reponse_valeur, reponse_metadata')
     .eq('session_id', sessionId)
 
   if (reponsesError || !reponses) {
@@ -219,6 +233,11 @@ export async function detecterEcarts(
 
   // 7. Comparer chaque réponse avec le snapshot ──────────────────────────────
   const ecartsACreer: EcartRow[] = []
+
+  // Candidats d'ajout (nouvelle instance) — stashés pendant la boucle, traités
+  // après coup une fois tous les champs de chaque instance connus.
+  // Clé externe : bloc_code — clé interne : groupe_instance_id.
+  const candidatsAjout = new Map<string, Map<string, CandidatAjout[]>>()
 
   for (const reponse of reponses) {
     const qKey   = `${reponse.question_code}|${reponse.portee}`
@@ -243,8 +262,17 @@ export async function detecterEcarts(
       const item = repeteItems.get(qEntry.bloc_code)?.get(groupeId)
 
       if (!item) {
-        // Item absent du snapshot : potentiel 'ajout', non traité en v1
-        console.warn(`[detection] groupe_instance_id ${groupeId} absent du snapshot (${qKey}) — ajout non détecté en v1`)
+        const metadata = reponse.reponse_metadata as Record<string, unknown> | null
+        if (metadata && metadata.nouvelle_instance === true) {
+          // Candidat d'ajout — stashé, traité à l'étape 7b après la boucle
+          if (!candidatsAjout.has(qEntry.bloc_code)) candidatsAjout.set(qEntry.bloc_code, new Map())
+          const parBloc = candidatsAjout.get(qEntry.bloc_code)!
+          if (!parBloc.has(groupeId)) parBloc.set(groupeId, [])
+          parBloc.get(groupeId)!.push({ reponse, qEntry, mappingEntry })
+        } else {
+          // Anomalie — UUID orphelin sans intention d'ajout déclarée
+          console.warn(`[detection] groupe_instance_id ${groupeId} absent du snapshot (${qKey}) — ignoré (pas de flag nouvelle_instance)`)
+        }
         continue
       }
 
@@ -285,6 +313,53 @@ export async function detecterEcarts(
       niveau_impact: mappingEntry.niveau_impact,
       statut:        'a_revoir',
     })
+  }
+
+  // 7b. Traiter les candidats d'ajout ─────────────────────────────────────────
+  // Une instance ne génère un écart que si au moins un de ses champs requis
+  // (CHAMPS_REQUIS_AJOUT) est renseigné — sinon elle est considérée abandonnée
+  // et purement ignorée (aucun écart fantôme).
+  for (const [blocCode, parGroupe] of candidatsAjout) {
+    const champsRequis = CHAMPS_REQUIS_AJOUT[blocCode] ?? []
+
+    for (const [groupeId, items] of parGroupe) {
+      const estEligible = items.some(it =>
+        champsRequis.includes(it.mappingEntry.colonne_cible) &&
+        normalizeValue(it.reponse.reponse_valeur as string | null) !== ''
+      )
+      if (!estEligible) continue  // instance vide/abandonnée — ignorée
+
+      for (const it of items) {
+        const reponseNorm = normalizeValue(it.reponse.reponse_valeur as string | null)
+        if (reponseNorm === '') continue  // pas d'écart pour un champ vide, même dans une instance éligible
+
+        ecartsACreer.push({
+          session_id:         sessionId,
+          reponse_id:         it.reponse.id as string,
+          bloc:               blocCode,
+          question_code:      it.reponse.question_code as string,
+          portee:             it.reponse.portee as string,
+          groupe_instance_id: groupeId,
+          entite_cible:       it.mappingEntry.entite_cible,
+          colonne_cible:      it.mappingEntry.colonne_cible,
+          entite_id:          groupeId,
+          type_ecart:         'ajout',
+          valeur_reference:   { valeur: null },
+          valeur_proposee:    { valeur: reponseNorm },
+          libelle_lisible:    generateLibelle(
+            it.qEntry.bloc_libelle,
+            it.qEntry.question_libelle,
+            it.reponse.portee as string,
+            '',
+            reponseNorm,
+            undefined,
+            true
+          ),
+          niveau_impact: NIVEAU_IMPACT_AJOUT[blocCode] ?? 'moyen',
+          statut:        'a_revoir',
+        })
+      }
+    }
   }
 
   const nbEcarts = ecartsACreer.length

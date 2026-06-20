@@ -108,3 +108,42 @@ export const ECART_MAPPING: Record<string, MappingEntry> = {
   'obj_horizon|client':       { entite_cible: 'objectifs', colonne_cible: 'horizon',       niveau_impact: 'faible', colonne_type: 'text'   },
   'obj_montant_cible|client': { entite_cible: 'objectifs', colonne_cible: 'montant_cible', niveau_impact: 'moyen',  colonne_type: 'number' },
 }
+
+// =============================================================================
+// Constantes — écarts type_ecart='ajout' (nouvelle instance dans un bloc répétable)
+// Périmètre : revenus, charges, actifs_financiers, immobilier, passifs, objectifs.
+// =============================================================================
+
+// Niveau d'impact fixe par bloc pour un ajout complet — un ajout n'a pas de
+// colonne_cible unique (plusieurs champs), contrairement à une modification.
+export const NIVEAU_IMPACT_AJOUT: Record<string, SessionEcartNiveauImpact> = {
+  objectifs:         'faible',
+  revenus:           'moyen',
+  charges:           'moyen',
+  actifs_financiers: 'fort',
+  immobilier:        'fort',
+  passifs:           'fort',
+}
+
+// Colonnes (colonne_cible du mapping) dont au moins une doit être renseignée
+// pour qu'une nouvelle instance soit considérée comme une intention réelle
+// d'ajout. Évite les écarts fantômes sur une instance créée puis abandonnée vide.
+export const CHAMPS_REQUIS_AJOUT: Record<string, string[]> = {
+  objectifs:         ['libelle'],
+  revenus:           ['libelle'],
+  charges:           ['libelle'],
+  actifs_financiers: ['nature', 'libelle'],
+  immobilier:        ['nature'],
+  passifs:           ['nature'],
+}
+
+// Colonnes NOT NULL en base pour chaque table cible d'un INSERT (ajout).
+// budget_postes.type n'est jamais saisi par le client — dérivé du bloc
+// ('revenus' → 'revenu', 'charges' → 'charge') dans application.ts.
+export const COLONNES_OBLIGATOIRES_INSERT: Record<string, string[]> = {
+  budget_postes:         ['type', 'libelle'],
+  actifs_financiers:     ['nature', 'libelle'],
+  patrimoine_immobilier: ['nature'],
+  passifs:               ['nature'],
+  objectifs:             ['libelle'],
+}

@@ -2,22 +2,25 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createServerSupabase } from '@/lib/supabase'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
-import { deciderEcart } from '@/lib/collecte'
+import { deciderGroupeEcarts } from '@/lib/collecte'
 
 const DecisionSchema = z.object({
   action: z.enum(['accepte', 'rejete']),
   motif:  z.string().max(2000).optional(),
 })
 
-// PATCH /api/collecte/sessions/:id/ecarts/:ecartId
-// Accepte ou refuse un écart individuel. Réservé aux conseillers authentifiés.
-// Seuls les écarts en statut 'a_revoir' peuvent être décidés.
-// Le statut 'traite' est réservé à la Phase 7 (application au référentiel).
+// PATCH /api/collecte/sessions/:id/ecarts/groupe/:entiteId
+// Décide en bloc tous les écarts type_ecart='ajout' partageant le même entite_id
+// (= une nouvelle instance proposée par le client dans un bloc répétable).
+// Seul point d'entrée autorisé pour décider un ajout — la route PATCH
+// /ecarts/:ecartId rejette explicitement toute décision champ par champ
+// sur un écart type_ecart='ajout' (incohérence possible : INSERT incomplet
+// violant une contrainte NOT NULL du référentiel).
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; ecartId: string }> }
+  { params }: { params: Promise<{ id: string; entiteId: string }> }
 ) {
-  const { id: sessionId, ecartId } = await params
+  const { id: sessionId, entiteId } = await params
 
   const supabase = await createServerSupabase()
   const { data: { user } } = await supabase.auth.getUser()
@@ -61,43 +64,26 @@ export async function PATCH(
     )
   }
 
-  // Vérifier que l'écart existe et appartient à la session
-  const { data: ecart } = await supabaseAdmin
+  // Vérifier que le groupe existe et a au moins un écart encore à_revoir
+  const { count } = await supabaseAdmin
     .from('session_ecarts')
-    .select('id, statut, type_ecart, entite_id')
-    .eq('id', ecartId)
+    .select('id', { count: 'exact', head: true })
     .eq('session_id', sessionId)
-    .maybeSingle()
+    .eq('entite_id', entiteId)
+    .eq('type_ecart', 'ajout')
+    .eq('statut', 'a_revoir')
 
-  if (!ecart) {
-    return NextResponse.json({ error: 'Écart introuvable' }, { status: 404 })
-  }
-
-  if (ecart.statut !== 'a_revoir') {
-    return NextResponse.json(
-      { error: `Cet écart est déjà décidé (statut : ${ecart.statut})` },
-      { status: 409 }
-    )
-  }
-
-  // Un ajout (nouvelle instance) se décide en bloc, jamais champ par champ —
-  // un INSERT incomplet violerait les contraintes NOT NULL du référentiel.
-  if (ecart.type_ecart === 'ajout') {
-    return NextResponse.json(
-      {
-        error: `Cet écart fait partie d'un ajout — décidez le groupe entier via PATCH /api/collecte/sessions/${sessionId}/ecarts/groupe/${ecart.entite_id}`,
-      },
-      { status: 409 }
-    )
+  if (!count || count === 0) {
+    return NextResponse.json({ error: 'Groupe introuvable ou déjà décidé' }, { status: 404 })
   }
 
   try {
-    const updated = await deciderEcart(
-      ecartId, sessionId, action, user.id, motif?.trim() ?? null, supabaseAdmin
+    const updated = await deciderGroupeEcarts(
+      sessionId, entiteId, action, user.id, motif?.trim() ?? null, supabaseAdmin
     )
-    return NextResponse.json(updated)
+    return NextResponse.json({ ecarts: updated, count: updated.length })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Erreur lors de la décision'
+    const message = err instanceof Error ? err.message : 'Erreur lors de la décision du groupe'
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }

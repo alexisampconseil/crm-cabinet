@@ -31,6 +31,12 @@ import BlocCard from './BlocCard'
 
 type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error'
 
+// Blocs où l'ajout d'une nouvelle instance est autorisé (Phase 8, objectif 1).
+// 'enfants' (bloc foyer) reste hors scope malgré la même limitation technique.
+const BLOCS_AVEC_AJOUT = new Set([
+  'revenus', 'charges', 'actifs_financiers', 'immobilier', 'passifs', 'objectifs',
+])
+
 interface ResolvedMeta {
   bloc: QuestionnaireReponseBloc
   question_code: string
@@ -127,21 +133,37 @@ function resolveMetaFromKey(
 }
 
 // ── Validation client-side des champs obligatoires ────────────────────────────
-// Exclut les questions répétables (leur gestion par instance est Phase 4+).
+// Exclut les questions répétables existantes (leur gestion par instance est Phase 4+).
+// Couvre en revanche les nouvelles instances ajoutées localement (nouvellesInstances) —
+// un ajout incomplet échouerait de toute façon à l'application au référentiel
+// (colonnes NOT NULL), mieux vaut prévenir avant la soumission.
 // Non bloquant — affiché en avertissement avant confirmation.
 
 function checkRequiredFields(
   structure: QuestionnaireStructure,
   formState: Map<string, string>,
-  perimetre: string
+  perimetre: string,
+  instances: Map<string, string[]>,
+  nouvellesInstances: Set<string>
 ): string[] {
   const missing: string[] = []
   for (const bloc of structure.blocs) {
     for (const q of bloc.questions) {
-      if (!q.obligatoire || q.repete) continue
-      if (!evaluateConditions(q.conditions, formState, perimetre)) continue
-      const val = formState.get(makeFormKey(q.code, q.portee, null)) ?? ''
-      if (val === '') missing.push(`${bloc.libelle} — ${q.libelle}`)
+      if (!q.obligatoire) continue
+
+      if (!q.repete) {
+        if (!evaluateConditions(q.conditions, formState, perimetre)) continue
+        const val = formState.get(makeFormKey(q.code, q.portee, null)) ?? ''
+        if (val === '') missing.push(`${bloc.libelle} — ${q.libelle}`)
+        continue
+      }
+
+      // Question répétable : ne valider que les nouvelles instances de ce bloc
+      const idsNouveaux = (instances.get(bloc.code) ?? []).filter(id => nouvellesInstances.has(id))
+      for (const groupeId of idsNouveaux) {
+        const val = formState.get(makeFormKey(q.code, q.portee, groupeId)) ?? ''
+        if (val === '') missing.push(`${bloc.libelle} — ${q.libelle} (nouvel élément)`)
+      }
     }
   }
   return missing
@@ -160,9 +182,12 @@ export default function QuestionnaireForm({
   const [formState, setFormState] = useState<Map<string, string>>(
     () => initFormState(structure, snapshot)
   )
-  const [instances] = useState<Map<string, string[]>>(
+  const [instances, setInstances] = useState<Map<string, string[]>>(
     () => initInstances(structure, snapshot)
   )
+  // groupe_instance_id créés localement par "Ajouter un élément" — jamais envoyé
+  // tel quel à l'API, sert uniquement à injecter reponse_metadata.nouvelle_instance.
+  const [nouvellesInstances, setNouvellesInstances] = useState<Set<string>>(new Set())
 
   // Autosave
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
@@ -181,6 +206,19 @@ export default function QuestionnaireForm({
       if (savedResetTimerRef.current) clearTimeout(savedResetTimerRef.current)
     }
   }, [])
+
+  // ── Ajout d'une nouvelle instance dans un bloc répétable ─────────────────────
+
+  const PLAFOND_INSTANCES_PAR_BLOC = 20
+
+  const handleAjouterInstance = (blocCode: string) => {
+    const actuelles = instances.get(blocCode) ?? []
+    if (actuelles.length >= PLAFOND_INSTANCES_PAR_BLOC) return
+
+    const id = crypto.randomUUID()
+    setInstances(prev => new Map(prev).set(blocCode, [...(prev.get(blocCode) ?? []), id]))
+    setNouvellesInstances(prev => new Set(prev).add(id))
+  }
 
   // ── Autosave ────────────────────────────────────────────────────────────────
 
@@ -202,7 +240,9 @@ export default function QuestionnaireForm({
           groupe_instance_id: meta.groupe_instance_id,
           reponse_type:       meta.reponse_type,
           reponse_valeur:     value !== '' ? value : null,
-          reponse_metadata:   {},
+          reponse_metadata:   meta.groupe_instance_id && nouvellesInstances.has(meta.groupe_instance_id)
+            ? { nouvelle_instance: true }
+            : {},
         }),
       })
 
@@ -270,7 +310,7 @@ export default function QuestionnaireForm({
 
   const blocsOrdonnes  = [...structure.blocs].sort((a, b) => a.ordre - b.ordre)
   const missingFields  = showConfirm
-    ? checkRequiredFields(structure, formState, perimetre)
+    ? checkRequiredFields(structure, formState, perimetre, instances, nouvellesInstances)
     : []
   const canSubmit = !isSubmitting && saveStatus !== 'saving'
 
@@ -304,6 +344,10 @@ export default function QuestionnaireForm({
           instances={instances.get(bloc.code) ?? []}
           onChange={handleChange}
           perimetre={perimetre}
+          onAjouterInstance={
+            BLOCS_AVEC_AJOUT.has(bloc.code) ? () => handleAjouterInstance(bloc.code) : undefined
+          }
+          plafondAtteint={(instances.get(bloc.code) ?? []).length >= PLAFOND_INSTANCES_PAR_BLOC}
         />
       ))}
 

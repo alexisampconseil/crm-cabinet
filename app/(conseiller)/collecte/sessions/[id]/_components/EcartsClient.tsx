@@ -63,6 +63,15 @@ function statutStyle(statut: string): React.CSSProperties {
   }
 }
 
+const ajoutBadgeStyle: React.CSSProperties = {
+  ...badgeBase,
+  backgroundColor: colors.successBg,
+  color: colors.success,
+  border: `1px solid ${colors.successBorder}`,
+  whiteSpace: 'nowrap' as const,
+  marginLeft: spacing[2],
+}
+
 // ── Props ───────────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -79,7 +88,8 @@ export default function EcartsClient({ initialEcarts, sessionId, initialStatut }
   const [ecarts,            setEcarts]           = useState<SessionEcart[]>(initialEcarts)
   const [statut,            setStatut]           = useState<CollecteSessionStatut>(initialStatut)
   const [loadingEcartId,    setLoadingEcartId]   = useState<string | null>(null)
-  const [modal,             setModal]            = useState<{ ecartId: string; libelle: string } | null>(null)
+  const [loadingGroupeId,   setLoadingGroupeId]  = useState<string | null>(null)
+  const [modal,             setModal]            = useState<{ ecartIds: string[]; entiteId: string | null; libelle: string } | null>(null)
   const [motif,             setMotif]            = useState('')
   const [isSubmittingModal, setIsSubmittingModal] = useState(false)
   const [modalError,        setModalError]       = useState('')
@@ -91,6 +101,11 @@ export default function EcartsClient({ initialEcarts, sessionId, initialStatut }
     return [...ecarts].sort((a, b) => {
       const sp = (STATUT_PRIORITY[a.statut] ?? 99) - (STATUT_PRIORITY[b.statut] ?? 99)
       if (sp !== 0) return sp
+      // Grouper les écarts d'ajout partageant le même entite_id (nouvelle instance)
+      // pour qu'ils restent visuellement adjacents — l'action se décide en bloc.
+      const groupKeyA = a.type_ecart === 'ajout' ? (a.entite_id ?? a.id) : a.id
+      const groupKeyB = b.type_ecart === 'ajout' ? (b.entite_id ?? b.id) : b.id
+      if (groupKeyA !== groupKeyB) return groupKeyA.localeCompare(groupKeyB)
       return (IMPACT_PRIORITY[a.niveau_impact] ?? 99) - (IMPACT_PRIORITY[b.niveau_impact] ?? 99)
     })
   }, [ecarts])
@@ -134,10 +149,53 @@ export default function EcartsClient({ initialEcarts, sessionId, initialStatut }
     }
   }
 
-  // ── Modal refus ─────────────────────────────────────────────────────────────
+  // ── Décision groupée (écarts type_ecart='ajout' partageant un entite_id) ────
+  // Jamais de décision champ par champ pour un ajout — l'INSERT au référentiel
+  // exige tous les champs obligatoires de l'instance (voir application.ts).
+
+  function replaceGroupe(updated: SessionEcart[]) {
+    setEcarts(prev => prev.map(e => updated.find(u => u.id === e.id) ?? e))
+  }
+
+  async function handleAccepterGroupe(entiteId: string, ecartIds: string[]) {
+    setLoadingGroupeId(entiteId)
+    setGlobalError('')
+    const before = ecarts.filter(e => ecartIds.includes(e.id))
+    setEcarts(prev => prev.map(e => ecartIds.includes(e.id) ? { ...e, statut: 'accepte' } : e))  // optimiste
+    try {
+      const res = await fetch(
+        `/api/collecte/sessions/${sessionId}/ecarts/groupe/${entiteId}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'accepte' }),
+        }
+      )
+      const data = await res.json()
+      if (!res.ok) {
+        replaceGroupe(before)  // revert
+        setGlobalError(data.error ?? 'Erreur lors de la validation du groupe')
+      } else {
+        replaceGroupe(data.ecarts as SessionEcart[])
+      }
+    } catch {
+      replaceGroupe(before)  // revert
+      setGlobalError('Erreur réseau — réessayez')
+    } finally {
+      setLoadingGroupeId(null)
+    }
+  }
+
+  // ── Modal refus (écart simple ou groupe d'ajout) ─────────────────────────────
 
   function openModal(ecart: SessionEcart) {
-    setModal({ ecartId: ecart.id, libelle: ecart.libelle_lisible })
+    setModal({ ecartIds: [ecart.id], entiteId: null, libelle: ecart.libelle_lisible })
+    setMotif('')
+    setModalError('')
+  }
+
+  function openModalGroupe(entiteId: string, ecartIds: string[], libelle: string) {
+    setModal({ ecartIds, entiteId, libelle })
     setMotif('')
     setModalError('')
   }
@@ -154,17 +212,21 @@ export default function EcartsClient({ initialEcarts, sessionId, initialStatut }
     setIsSubmittingModal(true)
     setModalError('')
     try {
-      const res = await fetch(
-        `/api/collecte/sessions/${sessionId}/ecarts/${modal.ecartId}`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'rejete', motif: motif.trim() }),
-        }
-      )
+      const url = modal.entiteId
+        ? `/api/collecte/sessions/${sessionId}/ecarts/groupe/${modal.entiteId}`
+        : `/api/collecte/sessions/${sessionId}/ecarts/${modal.ecartIds[0]}`
+
+      const res = await fetch(url, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'rejete', motif: motif.trim() }),
+      })
       const data = await res.json()
       if (!res.ok) {
         setModalError(data.error ?? 'Erreur lors du refus')
+      } else if (modal.entiteId) {
+        replaceGroupe(data.ecarts as SessionEcart[])
+        closeModal()
       } else {
         replaceEcart(data as SessionEcart)
         closeModal()
@@ -260,9 +322,24 @@ export default function EcartsClient({ initialEcarts, sessionId, initialStatut }
               </tr>
             </thead>
             <tbody>
-              {sortedEcarts.map(ecart => {
-                const isLoading = loadingEcartId === ecart.id
-                const decided   = ecart.statut !== 'a_revoir'
+              {sortedEcarts.map((ecart, idx) => {
+                const isAjout    = ecart.type_ecart === 'ajout'
+                const isLoading  = isAjout
+                  ? loadingGroupeId === ecart.entite_id
+                  : loadingEcartId === ecart.id
+                const decided    = ecart.statut !== 'a_revoir'
+
+                // Pour un ajout, les actions ne s'affichent que sur la première ligne
+                // du groupe (même entite_id) — elles agissent sur tout le groupe.
+                const precedent     = sortedEcarts[idx - 1]
+                const premierDuGroupe = !isAjout
+                  || !precedent
+                  || precedent.type_ecart !== 'ajout'
+                  || precedent.entite_id !== ecart.entite_id
+                const ecartIdsGroupe = isAjout
+                  ? sortedEcarts.filter(e => e.type_ecart === 'ajout' && e.entite_id === ecart.entite_id).map(e => e.id)
+                  : [ecart.id]
+
                 return (
                   <tr
                     key={ecart.id}
@@ -272,6 +349,9 @@ export default function EcartsClient({ initialEcarts, sessionId, initialStatut }
                       <span style={s.blocBadge}>
                         {BLOC_LABELS[ecart.bloc] ?? ecart.bloc}
                       </span>
+                      {isAjout && premierDuGroupe && (
+                        <span style={ajoutBadgeStyle}>Nouvel élément</span>
+                      )}
                     </td>
                     <td style={{ ...tableCell, maxWidth: '260px' }}>
                       <span style={s.libelleText} title={ecart.libelle_lisible}>
@@ -295,10 +375,13 @@ export default function EcartsClient({ initialEcarts, sessionId, initialStatut }
                       </span>
                     </td>
                     <td style={tableCell}>
-                      {ecart.statut === 'a_revoir' && (
+                      {ecart.statut === 'a_revoir' && premierDuGroupe && (
                         <div style={s.actions}>
                           <button
-                            onClick={() => handleAccepter(ecart)}
+                            onClick={() => isAjout
+                              ? handleAccepterGroupe(ecart.entite_id as string, ecartIdsGroupe)
+                              : handleAccepter(ecart)
+                            }
                             disabled={isLoading}
                             style={{
                               ...s.btnAccept,
@@ -307,9 +390,13 @@ export default function EcartsClient({ initialEcarts, sessionId, initialStatut }
                             }}
                           >
                             {isLoading ? '…' : 'Accepter'}
+                            {isAjout && ecartIdsGroupe.length > 1 ? ` (${ecartIdsGroupe.length})` : ''}
                           </button>
                           <button
-                            onClick={() => openModal(ecart)}
+                            onClick={() => isAjout
+                              ? openModalGroupe(ecart.entite_id as string, ecartIdsGroupe, `Nouvel élément — ${BLOC_LABELS[ecart.bloc] ?? ecart.bloc}`)
+                              : openModal(ecart)
+                            }
                             disabled={isLoading}
                             style={{
                               ...s.btnReject,

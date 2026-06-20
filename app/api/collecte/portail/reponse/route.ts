@@ -12,6 +12,22 @@ const BLOCS = [
 const TYPES   = ['texte', 'nombre', 'date', 'booleen', 'liste', 'multi_liste'] as const
 const PORTEES = ['client', 'conjoint', 'foyer'] as const
 
+const PLAFOND_AJOUTS_PAR_BLOC = 20
+const PLAFOND_AJOUTS_PAR_SESSION = 100
+
+// Extrait les id réels présents dans snapshot_prefill pour un chemin repete_source donné.
+// Duplique délibérément prefillResolver.getRepeatableItems (fonction pure, pas de DOM).
+function getSnapshotItemIds(snapshot: unknown, path: string): Set<string> {
+  const parts = path.split('.')
+  let cur: unknown = snapshot
+  for (const part of parts) {
+    if (cur == null || typeof cur !== 'object') return new Set()
+    cur = (cur as Record<string, unknown>)[part]
+  }
+  if (!Array.isArray(cur)) return new Set()
+  return new Set(cur.map((item) => (item as { id: string }).id))
+}
+
 const PayloadSchema = z.object({
   kyc_token:          z.string().min(1, 'kyc_token requis'),
   bloc:               z.enum(BLOCS),
@@ -138,6 +154,55 @@ export async function POST(request: NextRequest) {
       { error: `groupe_instance_id non attendu pour "${question_code}" (repete: false)` },
       { status: 422 }
     )
+  }
+
+  // ── 4.5 Plafonds anti-abus pour les nouvelles instances (ajout) ───────────
+  // Une "nouvelle instance" = groupe_instance_id absent des items réels du
+  // snapshot ET déclarée comme telle via reponse_metadata.nouvelle_instance.
+  const estNouvelleInstance =
+    questionObj.repete === true &&
+    !!groupe_instance_id &&
+    (reponse_metadata as Record<string, unknown> | undefined)?.nouvelle_instance === true &&
+    !getSnapshotItemIds(session.snapshot_prefill, blocObj.repete_source ?? '').has(groupe_instance_id)
+
+  if (estNouvelleInstance) {
+    const { data: reponsesSession } = await supabaseAdmin
+      .from('questionnaire_reponses')
+      .select('bloc, groupe_instance_id')
+      .eq('session_id', sessionId)
+      .not('groupe_instance_id', 'is', null)
+
+    const nouveauxParBloc = new Map<string, Set<string>>()
+    const nouveauxGlobal  = new Set<string>()
+
+    for (const r of reponsesSession ?? []) {
+      const blocRow = qv.structure.blocs.find(b => b.code === r.bloc)
+      if (!blocRow?.repete_source) continue
+      const idsExistants = getSnapshotItemIds(session.snapshot_prefill, blocRow.repete_source)
+      const gid = r.groupe_instance_id as string
+      if (idsExistants.has(gid)) continue  // item réel du référentiel, pas un ajout
+
+      if (!nouveauxParBloc.has(r.bloc as string)) nouveauxParBloc.set(r.bloc as string, new Set())
+      nouveauxParBloc.get(r.bloc as string)!.add(gid)
+      nouveauxGlobal.add(`${r.bloc}:${gid}`)
+    }
+
+    const nouveauxBlocCourant = nouveauxParBloc.get(bloc) ?? new Set<string>()
+    nouveauxBlocCourant.add(groupe_instance_id)
+    nouveauxGlobal.add(`${bloc}:${groupe_instance_id}`)
+
+    if (nouveauxBlocCourant.size > PLAFOND_AJOUTS_PAR_BLOC) {
+      return NextResponse.json(
+        { error: `Nombre maximum de nouveaux éléments atteint pour ce bloc (${PLAFOND_AJOUTS_PAR_BLOC})` },
+        { status: 422 }
+      )
+    }
+    if (nouveauxGlobal.size > PLAFOND_AJOUTS_PAR_SESSION) {
+      return NextResponse.json(
+        { error: `Nombre maximum de nouveaux éléments atteint pour cette session (${PLAFOND_AJOUTS_PAR_SESSION})` },
+        { status: 422 }
+      )
+    }
   }
 
   // ── 5. Upsert dans questionnaire_reponses ─────────────────────────────────

@@ -11,9 +11,14 @@ interface Props {
   // immediate=true : liste, booleen, multi_liste — sélection atomique, pas de debounce
   onChange: (key: string, value: string, immediate?: boolean) => void
   perimetre: string
+  // Présent uniquement pour les blocs où l'ajout est autorisé (voir BLOCS_AVEC_AJOUT)
+  onAjouterInstance?: () => void
+  plafondAtteint?: boolean
 }
 
-export default function BlocCard({ bloc, formState, instances, onChange, perimetre }: Props) {
+export default function BlocCard({
+  bloc, formState, instances, onChange, perimetre, onAjouterInstance, plafondAtteint,
+}: Props) {
   const fixedQuestions = bloc.questions.filter(q => !q.repete)
   const repeatableQuestions = bloc.questions.filter(q => q.repete)
 
@@ -88,6 +93,7 @@ export default function BlocCard({ bloc, formState, instances, onChange, perimet
                   fontSize: fontSizes.base,
                   color: colors.textLight,
                   fontStyle: 'italic',
+                  marginBottom: onAjouterInstance ? spacing[4] : 0,
                 }}
               >
                 Aucun élément renseigné dans votre dossier.
@@ -131,6 +137,41 @@ export default function BlocCard({ bloc, formState, instances, onChange, perimet
                 })}
               </div>
             ))}
+
+            {onAjouterInstance && (
+              <div style={{ marginTop: instances.length > 0 ? spacing[5] : 0 }}>
+                <button
+                  type="button"
+                  onClick={onAjouterInstance}
+                  disabled={plafondAtteint}
+                  style={{
+                    fontFamily: fonts.body,
+                    fontSize: fontSizes.sm,
+                    fontWeight: fontWeights.medium,
+                    color: plafondAtteint ? colors.textLight : colors.blue,
+                    backgroundColor: 'transparent',
+                    border: `1px solid ${plafondAtteint ? colors.border : colors.blueLight}`,
+                    padding: `${spacing[2]} ${spacing[4]}`,
+                    cursor: plafondAtteint ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  + Ajouter un élément
+                </button>
+                {plafondAtteint && (
+                  <p
+                    style={{
+                      fontFamily: fonts.body,
+                      fontSize: fontSizes.xs,
+                      color: colors.textLight,
+                      fontStyle: 'italic',
+                      marginTop: spacing[2],
+                    }}
+                  >
+                    Nombre maximum d&apos;éléments atteint pour cette section.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

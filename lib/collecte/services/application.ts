@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { SessionEcart } from '../types'
-import { ECART_MAPPING, type ColonneType } from '../mapping'
+import type { SessionEcart, SessionEcartTypeEcart } from '../types'
+import { ECART_MAPPING, COLONNES_OBLIGATOIRES_INSERT, type ColonneType } from '../mapping'
 import { recalculerCompteurs } from '../repository/sessions'
 
 export interface ApplicationResult {
@@ -30,9 +30,13 @@ function coerceValeur(valeur: string | null, type: ColonneType): unknown {
 }
 
 // Applique les écarts statut='accepte' non encore traités au référentiel patrimonial.
-// Groupement par (entite_cible, entite_id) pour 1 UPDATE par ligne du référentiel.
-// Tables simples  (entite_id IS NULL)  : WHERE client_id = clientId
-// Tables répétables (entite_id IS NOT NULL) : WHERE id = entite_id
+// Groupement par (entite_cible, entite_id) pour 1 opération par ligne du référentiel.
+// type_ecart='modification' :
+//   Tables simples  (entite_id IS NULL)  : UPDATE WHERE client_id = clientId
+//   Tables répétables (entite_id IS NOT NULL) : UPDATE WHERE id = entite_id
+// type_ecart='ajout' :
+//   INSERT avec entite_id = faux UUID temporaire (généré côté client) — remplacé
+//   par l'id réel après succès. Voir COLONNES_OBLIGATOIRES_INSERT (mapping.ts).
 // Traçabilité : statut='traite', applique_le sur chaque écart appliqué.
 // session_ecarts n'a pas de colonne applique_par (migration 010) — seul applique_le
 // est tracé. userId est conservé dans la signature pour un futur ajout de colonne.
@@ -57,10 +61,12 @@ export async function appliquerEcarts(
   const ecarts = (ecartsRaw ?? []) as SessionEcart[]
   if (ecarts.length === 0) return { applied: 0, errors: [] }
 
-  // 2. Construire les batches d'UPDATE (1 par entité du référentiel)
+  // 2. Construire les batches (1 par entité du référentiel — UPDATE ou INSERT)
   type Batch = {
     entite_cible: string
     entite_id:    string | null
+    bloc:         string
+    type_ecart:   SessionEcartTypeEcart
     columns:      Record<string, unknown>
     ecart_ids:    string[]
   }
@@ -79,6 +85,8 @@ export async function appliquerEcarts(
       batchMap.set(batchKey, {
         entite_cible: ecart.entite_cible,
         entite_id:    ecart.entite_id,
+        bloc:         ecart.bloc,
+        type_ecart:   ecart.type_ecart,
         columns:      {},
         ecart_ids:    [],
       })
@@ -108,17 +116,39 @@ export async function appliquerEcarts(
       // Supabase sans types générés — accès dynamique à la table
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const table = (supabase as any).from(batch.entite_cible)
-      let updateError: { message: string } | null = null
+      let opError: { message: string } | null = null
+      let nouvelId: string | null = null
 
-      if (batch.entite_id) {
+      if (batch.type_ecart === 'ajout') {
+        const columns: Record<string, unknown> = { ...batch.columns, client_id: clientId }
+
+        // Cas spécial : budget_postes.type n'est jamais saisi par le client —
+        // dérivé du bloc d'origine ('revenus' → 'revenu', 'charges' → 'charge').
+        if (batch.entite_cible === 'budget_postes') {
+          columns.type = batch.bloc === 'revenus' ? 'revenu' : 'charge'
+        }
+
+        // Défense en profondeur : vérifier les colonnes NOT NULL avant l'INSERT.
+        // En pratique ne devrait jamais se produire (champs déjà obligatoires
+        // côté questionnaire), sauf décision partielle contournant l'UI groupée.
+        const requises   = COLONNES_OBLIGATOIRES_INSERT[batch.entite_cible] ?? []
+        const manquantes = requises.filter(col => columns[col] === undefined || columns[col] === null || columns[col] === '')
+        if (manquantes.length > 0) {
+          throw new Error(`Champ(s) obligatoire(s) manquant(s) pour l'ajout : ${manquantes.join(', ')}`)
+        }
+
+        const res = await table.insert(columns).select('id').single()
+        opError = res.error
+        if (!res.error) nouvelId = res.data.id
+      } else if (batch.entite_id) {
         const res = await table.update(batch.columns).eq('id', batch.entite_id)
-        updateError = res.error
+        opError = res.error
       } else {
         const res = await table.update(batch.columns).eq('client_id', clientId)
-        updateError = res.error
+        opError = res.error
       }
 
-      if (updateError) throw new Error(updateError.message)
+      if (opError) throw new Error(opError.message)
 
       // Traçabilité : marquer les écarts du batch en 'traite'
       const { error: traceError } = await supabase
@@ -129,6 +159,16 @@ export async function appliquerEcarts(
         })
         .in('id', batch.ecart_ids)
       if (traceError) throw new Error(traceError.message)
+
+      // Remplacer l'entite_id temporaire (faux UUID côté client) par l'id réel
+      // généré par l'INSERT — préserve la traçabilité (snapshot, audit futur).
+      if (batch.type_ecart === 'ajout' && nouvelId) {
+        const { error: idError } = await supabase
+          .from('session_ecarts')
+          .update({ entite_id: nouvelId })
+          .in('id', batch.ecart_ids)
+        if (idError) throw new Error(idError.message)
+      }
 
       applied += batch.ecart_ids.length
     } catch (err) {
