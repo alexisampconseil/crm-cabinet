@@ -11,6 +11,8 @@ import { appliquerEcarts, buildSnapshotPrefill, computeSnapshotChecksum, countEc
 //   1. Appliquer écarts → traite (idempotent : filtre applique_le IS NULL)
 //   2. Générer patrimoine_snapshot (type_declencheur = 'validation_session')
 //   3. Passer la session en 'archive' — SEULEMENT si le snapshot réussit
+//   4. Marquer clients.kyc_status = 'complet' — non bloquant, ne remet jamais
+//      en cause un archivage déjà réussi
 //
 // Si le snapshot échoue, la session reste en 'valide' et le conseiller peut relancer.
 // Aucun écart rejeté n'est touché. Aucune application au référentiel n'est faite dans d'autres phases.
@@ -164,6 +166,18 @@ export async function POST(
       snapshot_id,
       archive_error: archiveError.message,
     }, { status: 500 })
+  }
+
+  // ── 4. Marquer le KYC du client comme complet ────────────────────────────────
+  // Non bloquant : l'archivage de la session (étape critique déjà sécurisée)
+  // ne doit jamais être remis en cause par un échec isolé sur cette mise à jour.
+  const { error: kycError } = await supabaseAdmin
+    .from('clients')
+    .update({ kyc_status: 'complet' })
+    .eq('id', session.client_id)
+
+  if (kycError) {
+    console.error('[appliquer-ecarts] Échec mise à jour clients.kyc_status', kycError)
   }
 
   return NextResponse.json({
