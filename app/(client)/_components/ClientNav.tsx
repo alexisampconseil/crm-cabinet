@@ -53,6 +53,6 @@ const s = {
   active: {
     color: 'rgba(255,255,255,0.95)',
     backgroundColor: 'rgba(182,153,87,0.1)',
-    borderLeftColor: colors.gold,
+    borderLeft: `3px solid ${colors.gold}`,
   } as React.CSSProperties,
 }

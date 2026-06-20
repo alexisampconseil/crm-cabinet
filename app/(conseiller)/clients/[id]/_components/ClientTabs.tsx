@@ -118,7 +118,7 @@ const s = {
   } as React.CSSProperties,
   tabActive: {
     color: colors.blueDeep,
-    borderBottomColor: colors.gold,
+    borderBottom: `2px solid ${colors.gold}`,
     fontWeight: fontWeights.semibold,
   } as React.CSSProperties,
   actions: {

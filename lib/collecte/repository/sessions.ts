@@ -71,7 +71,7 @@ export async function createSession(
       perimetre: input.perimetre ?? 'client_seul',
       type: input.type ?? 'bilan_initial',
       canal: input.canal ?? 'entretien',
-      notes: input.notes ?? null,
+      notes_conseiller: input.notes_conseiller ?? null,
     })
     .select()
     .single()

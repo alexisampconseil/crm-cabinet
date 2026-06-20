@@ -33,11 +33,14 @@ function coerceValeur(valeur: string | null, type: ColonneType): unknown {
 // Groupement par (entite_cible, entite_id) pour 1 UPDATE par ligne du référentiel.
 // Tables simples  (entite_id IS NULL)  : WHERE client_id = clientId
 // Tables répétables (entite_id IS NOT NULL) : WHERE id = entite_id
-// Traçabilité : statut='traite', applique_par, applique_le sur chaque écart appliqué.
+// Traçabilité : statut='traite', applique_le sur chaque écart appliqué.
+// session_ecarts n'a pas de colonne applique_par (migration 010) — seul applique_le
+// est tracé. userId est conservé dans la signature pour un futur ajout de colonne.
 // Idempotent : filtre applique_le IS NULL — un écart traite n'est jamais recalculé.
 export async function appliquerEcarts(
   sessionId: string,
   clientId:  string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   userId:    string,
   supabase:  SupabaseClient
 ): Promise<ApplicationResult> {
@@ -121,9 +124,8 @@ export async function appliquerEcarts(
       const { error: traceError } = await supabase
         .from('session_ecarts')
         .update({
-          statut:       'traite' as const,
-          applique_par: userId,
-          applique_le:  new Date().toISOString(),
+          statut:      'traite' as const,
+          applique_le: new Date().toISOString(),
         })
         .in('id', batch.ecart_ids)
       if (traceError) throw new Error(traceError.message)

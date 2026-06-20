@@ -43,7 +43,7 @@ export interface CollecteSession {
   date_ouverture: string | null
   date_soumission: string | null
   date_validation: string | null
-  notes: string | null
+  notes_conseiller: string | null
   created_at: string
   updated_at: string
 }
@@ -53,7 +53,7 @@ export interface CollecteSessionCreate {
   type?: CollecteSessionType
   canal?: CollecteSessionCanal
   perimetre?: CollecteSessionPerimetre
-  notes?: string
+  notes_conseiller?: string
 }
 
 // ── questionnaire_versions ────────────────────────────────────────────────────
@@ -415,7 +415,7 @@ export interface CreeSessionParams {
   type?: CollecteSessionType
   canal?: CollecteSessionCanal
   perimetre?: CollecteSessionPerimetre
-  notes?: string
+  notes_conseiller?: string
 }
 
 export interface OuvrirSessionResult {

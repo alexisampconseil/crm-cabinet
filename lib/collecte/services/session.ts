@@ -24,7 +24,7 @@ export async function creerSession(
       perimetre: params.perimetre ?? 'client_seul',
       type: params.type,
       canal: params.canal,
-      notes: params.notes,
+      notes_conseiller: params.notes_conseiller,
     },
     supabase
   )

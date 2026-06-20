@@ -6,7 +6,7 @@ import { creerSession, getSessionsEnRevue } from '@/lib/collecte'
 const CreateSchema = z.object({
   clientId: z.string().uuid('clientId doit être un UUID valide'),
   perimetre: z.enum(['client_seul', 'foyer']).optional(),
-  notes: z.string().max(2000).optional(),
+  notes_conseiller: z.string().max(2000).optional(),
 })
 
 // POST /api/collecte/sessions — créer une session brouillon pour un client

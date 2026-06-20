@@ -16,7 +16,7 @@ const CreateLienSchema = z.object({
     .enum(['bilan_initial', 'mise_a_jour', 'pre_conseil', 'verification_annuelle'])
     .optional(),
   expiresInHours: z.number().int().min(1).max(720).optional().default(168),
-  notes: z.string().max(2000).optional(),
+  notes_conseiller: z.string().max(2000).optional(),
 })
 
 // POST /api/collecte/liens
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: msg }, { status: 422 })
   }
 
-  const { clientId, perimetre, type, expiresInHours, notes } = parsed.data
+  const { clientId, perimetre, type, expiresInHours, notes_conseiller } = parsed.data
 
   // Déclarés avant le try pour être accessibles dans le catch si une création partielle
   // a eu lieu avant l'erreur — permet d'informer le conseiller sur la récupération.
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
         perimetre: perimetre ?? 'client_seul',
         type: type ?? 'bilan_initial',
         canal: 'portail_client',
-        notes,
+        notes_conseiller,
       },
       supabase
     )
@@ -181,7 +181,16 @@ export async function POST(request: NextRequest) {
     )
   } catch (err) {
     console.error('[collecte/liens]', err)
-    const message = err instanceof Error ? err.message : 'Erreur serveur'
+    // Les erreurs réseau/fetch de @supabase/supabase-js (ex : échec TLS) ne sont
+    // pas des instances d'Error mais des objets { message, details, hint, code }.
+    // On extrait .message dans tous les cas pour ne jamais masquer la cause réelle
+    // derrière un message générique.
+    const message =
+      err instanceof Error
+        ? err.message
+        : (typeof err === 'object' && err !== null && 'message' in err
+            ? String((err as { message: unknown }).message)
+            : 'Erreur serveur')
     return NextResponse.json(
       {
         error: message,

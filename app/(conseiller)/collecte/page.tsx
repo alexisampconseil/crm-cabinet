@@ -94,7 +94,7 @@ export default async function CollectePage() {
                       </span>
                     </td>
                     <td style={{ ...tableCell, textAlign: 'right' as const }}>
-                      <Link href={`/collecte/${sess.id}`} style={s.reviserLink}>
+                      <Link href={`/collecte/sessions/${sess.id}`} style={s.reviserLink}>
                         {sess.statut === 'soumis'   ? 'Relancer →' :
                          sess.statut === 'en_revue' ? 'Réviser →'  :
                          'Appliquer →'}

@@ -121,13 +121,15 @@ export default function FamillePage() {
           <Field label="Catégorie professionnelle">
             <select style={{ ...inputBase, cursor: 'pointer' }} value={famille.categorie_professionnelle ?? ''} onChange={setF('categorie_professionnelle')}>
               <option value="">—</option>
-              <option value="Salarié">Salarié</option>
-              <option value="Fonctionnaire">Fonctionnaire</option>
-              <option value="TNS">Travailleur non salarié (TNS)</option>
-              <option value="Chef d'entreprise">Chef d'entreprise</option>
-              <option value="Profession libérale">Profession libérale</option>
-              <option value="Retraité">Retraité</option>
-              <option value="Sans activité">Sans activité</option>
+              <option value="salarie_prive">Salarié secteur privé</option>
+              <option value="salarie_public">Salarié secteur public</option>
+              <option value="fonctionnaire">Fonctionnaire</option>
+              <option value="independant">Indépendant</option>
+              <option value="tns">Travailleur non salarié (TNS)</option>
+              <option value="dirigeant">Dirigeant d'entreprise</option>
+              <option value="retraite">Retraité</option>
+              <option value="sans_activite">Sans activité</option>
+              <option value="autre">Autre</option>
             </select>
           </Field>
         </div>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
-import { appliquerEcarts, buildSnapshotPrefill, countEcartsARevoir } from '@/lib/collecte'
+import { appliquerEcarts, buildSnapshotPrefill, computeSnapshotChecksum, countEcartsARevoir } from '@/lib/collecte'
 
 // POST /api/collecte/sessions/:id/appliquer-ecarts
 // Phase 7 : applique les écarts statut='accepte' au référentiel, génère le snapshot final,
@@ -109,7 +109,17 @@ export async function POST(
     if (existingSnap) {
       snapshot_id = existingSnap.id
     } else {
-      const prefill = await buildSnapshotPrefill(session.client_id as string, supabaseAdmin)
+      const prefill   = await buildSnapshotPrefill(session.client_id as string, supabaseAdmin)
+      const genere_le = new Date().toISOString()
+      const checksum  = computeSnapshotChecksum({
+        client_id:        session.client_id as string,
+        genere_le,
+        session_id:       sessionId,
+        snapshot:         prefill,
+        type_declencheur: 'validation_session',
+        version_schema:   '1.0',
+      })
+
       const { data: snap, error: snapError } = await supabaseAdmin
         .from('patrimoine_snapshots')
         .insert({
@@ -119,8 +129,9 @@ export async function POST(
           version_schema:   '1.0',
           statut:           'finalise',
           snapshot:         prefill,
+          checksum,
           genere_par:       user.id,
-          genere_le:        new Date().toISOString(),
+          genere_le,
         })
         .select('id')
         .single()

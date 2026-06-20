@@ -61,7 +61,8 @@ export type {
 // ── Services ──────────────────────────────────────────────────────────────────
 export { creerSession } from './services/session'
 export { ouvrirSession } from './services/envoi'
-export { buildSnapshotPrefill } from './services/prefill'
+export { buildSnapshotPrefill, computeSnapshotChecksum } from './services/prefill'
+export type { SnapshotChecksumInput } from './services/prefill'
 export { detecterEcarts } from './services/detection'
 export type { DetectionResult } from './services/detection'
 

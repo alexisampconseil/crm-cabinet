@@ -6,6 +6,7 @@ import {
   colors, fonts, fontSizes, fontWeights, spacing,
   letterSpacings, statusBadge, transitions, buttonGold,
 } from '@/lib/design-tokens'
+import GenerateCollecteLinkButton from './GenerateCollecteLinkButton'
 
 const KYC_LABELS: Record<string, string> = {
   non_fait: 'KYC non fait',
@@ -78,6 +79,7 @@ export default function ClientHeader({ clientId: _ }: { clientId: string }) {
             Profil {client.profil}
           </span>
         )}
+        <GenerateCollecteLinkButton clientId={client.id} kycStatus={client.kyc_status} email={client.email} />
       </div>
 
       {/* Encours */}
