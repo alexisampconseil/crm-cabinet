@@ -6,6 +6,7 @@ import type {
   BienImmobilier, Passif, BudgetPoste, Fiscalite, Prevoyance,
   ContratPrevoyance, Dossier,
 } from './supabase'
+import type { CollecteSession } from './collecte'
 
 // ============================================================
 // TYPES
@@ -24,6 +25,9 @@ export interface ClientContextData {
   prevoyance: Prevoyance | null
   contratsPrevoyance: ContratPrevoyance[]
   dossiers: Dossier[]
+  // Session brouillon/en_cours la plus récente, si elle existe — lecture seule,
+  // jamais modifiée via update/saveAll (pas de notion de "dirty" applicable).
+  collecteActive: CollecteSession | null
 }
 
 export interface SaveHandlers {

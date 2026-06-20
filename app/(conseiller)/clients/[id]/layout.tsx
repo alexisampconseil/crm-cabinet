@@ -7,6 +7,7 @@ import type {
   Client, Famille, Enfant, Objectif, ActifFinancier,
   BienImmobilier, Passif, BudgetPoste, Fiscalite, Prevoyance, ContratPrevoyance,
 } from '@/lib/supabase'
+import type { CollecteSession } from '@/lib/collecte'
 import ClientHeader from './_components/ClientHeader'
 import ClientTabs from './_components/ClientTabs'
 import { colors, spacing } from '@/lib/design-tokens'
@@ -49,6 +50,7 @@ export default async function ClientLayout({ children, params }: Props) {
     familleRes, enfantsRes, objectifsRes,
     actifsRes, biensRes, passifsRes, budgetRes,
     fiscaliteRes, prevoyanceRes, contratsRes, dossiersRes,
+    collecteActiveRes,
   ] = await Promise.allSettled([
     supabase.from('famille').select('*').eq('client_id', clientId).single(),
     supabase.from('enfants').select('*').eq('client_id', clientId),
@@ -61,6 +63,12 @@ export default async function ClientLayout({ children, params }: Props) {
     supabase.from('prevoyance').select('*').eq('client_id', clientId).single(),
     supabase.from('contrats_prevoyance').select('*').eq('client_id', clientId),
     supabase.from('dossiers').select('*, dossier_etapes(*)').eq('client_id', clientId).order('created_at', { ascending: false }),
+    supabase.from('collecte_sessions').select('*')
+      .eq('client_id', clientId)
+      .in('statut', ['brouillon', 'en_cours'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ])
 
   const initial: ClientContextData = {
@@ -76,6 +84,7 @@ export default async function ClientLayout({ children, params }: Props) {
     prevoyance:         prevoyanceRes.status === 'fulfilled' ? (prevoyanceRes.value.data as Prevoyance | null) : null,
     contratsPrevoyance: contratsRes.status === 'fulfilled'  ? ((contratsRes.value.data ?? []) as never[]) : [],
     dossiers:           dossiersRes.status === 'fulfilled'  ? ((dossiersRes.value.data ?? []) as never[]) : [],
+    collecteActive:     collecteActiveRes.status === 'fulfilled' ? (collecteActiveRes.value.data as CollecteSession | null) : null,
   }
 
   // ----------------------------------------------------------------

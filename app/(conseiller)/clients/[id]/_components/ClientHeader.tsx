@@ -7,6 +7,7 @@ import {
   letterSpacings, statusBadge, transitions, buttonGold,
 } from '@/lib/design-tokens'
 import GenerateCollecteLinkButton from './GenerateCollecteLinkButton'
+import CollecteActiveIndicator from './CollecteActiveIndicator'
 
 const KYC_LABELS: Record<string, string> = {
   non_fait: 'KYC non fait',
@@ -34,7 +35,7 @@ function formatEuros(n: number) {
 }
 
 export default function ClientHeader({ clientId: _ }: { clientId: string }) {
-  const { data: { client, famille }, dirty, saving, saveErrors, saveAll, clearErrors } = useClient()
+  const { data: { client, famille, collecteActive }, dirty, saving, saveErrors, saveAll, clearErrors } = useClient()
   const [saved, setSaved] = useState(false)
 
   // L'email "principal" du client est saisi dans l'onglet Famille (famille.email),
@@ -56,6 +57,7 @@ export default function ClientHeader({ clientId: _ }: { clientId: string }) {
   const isDirty = dirty.size > 0
 
   return (
+    <>
     <div style={s.header}>
       {/* Avatar */}
       <div style={s.avatar}>{initiales}</div>
@@ -111,6 +113,13 @@ export default function ClientHeader({ clientId: _ }: { clientId: string }) {
         </button>
       </div>
     </div>
+
+    {collecteActive && (
+      <div style={s.collecteRow}>
+        <CollecteActiveIndicator session={collecteActive} />
+      </div>
+    )}
+    </>
   )
 }
 
@@ -124,6 +133,12 @@ const s = {
     borderBottom: `1px solid ${colors.border}`,
     marginBottom: spacing[1],
   },
+  collecteRow: {
+    padding: `${spacing[3]} ${spacing[6]}`,
+    backgroundColor: colors.bluePale,
+    borderBottom: `1px solid ${colors.border}`,
+    marginBottom: spacing[1],
+  } as React.CSSProperties,
   avatar: {
     width: '52px',
     height: '52px',
