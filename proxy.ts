@@ -6,7 +6,19 @@ import type { NextRequest } from 'next/server'
 const PUBLIC_PATHS = ['/login', '/kyc']
 
 function isPublicPath(pathname: string): boolean {
-  return PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))
+  if (PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))) return true
+
+  // Portail public de collecte : /collecte/{token} — un seul segment après
+  // /collecte. Distinct de /collecte (liste conseiller, app/(conseiller)/collecte/)
+  // et /collecte/sessions/{id} (détail conseiller), qui doivent rester protégés.
+  // Le client accédant via ce lien n'a pas de session Supabase Auth — il
+  // s'authentifie par le kyc_token dans l'URL, vérifié par la page elle-même.
+  const segments = pathname.split('/').filter(Boolean)
+  if (segments[0] === 'collecte' && segments.length === 2 && segments[1] !== 'sessions') {
+    return true
+  }
+
+  return false
 }
 
 // Routes API — s'authentifient elles-mêmes
