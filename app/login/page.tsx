@@ -98,7 +98,13 @@ function LoginContent() {
 
     const destination = nextPath ||
       (role === 'conseiller' ? '/dashboard' : '/tableau-de-bord')
+    // router.push() seul ne rafraîchit pas les Server Components : Next.js peut
+    // servir le rendu mis en cache de la destination généré avant la connexion
+    // (ex. la redirection vers /login subie juste avant), renvoyant l'utilisateur
+    // en boucle. router.refresh() invalide ce cache et force une relecture des
+    // cookies de session côté serveur. Cf. doc Supabase SSR App Router.
     router.push(destination)
+    router.refresh()
   }, [router, nextPath])
 
   const handleCredentialsSubmit = async (e: React.FormEvent) => {
