@@ -6,7 +6,7 @@
     "dev": "cross-env NODE_OPTIONS=--use-system-ca next dev",
     "build": "cross-env NODE_OPTIONS=--use-system-ca next build",
     "postbuild": "node scripts/postbuild.js",
-    "start": "cross-env NODE_OPTIONS=--use-system-ca node .next/standalone/server.js",
+    "start": "NODE_OPTIONS=--use-system-ca node .next/standalone/server.js",
     "lint": "eslint"
   },
   "dependencies": {
