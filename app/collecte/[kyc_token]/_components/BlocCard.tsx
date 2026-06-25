@@ -1,6 +1,7 @@
 'use client'
+import { useState } from 'react'
 import type { QuestionnaireBloc } from '@/lib/collecte'
-import { colors, fonts, fontSizes, fontWeights, letterSpacings, spacing } from '@/lib/design-tokens'
+import { colors, fonts, fontSizes, fontWeights, letterSpacings, spacing, transitions } from '@/lib/design-tokens'
 import { makeFormKey, evaluateConditions } from './prefillResolver'
 import QuestionField from './QuestionField'
 
@@ -14,13 +15,20 @@ interface Props {
   // Présent uniquement pour les blocs où l'ajout est autorisé (voir BLOCS_AVEC_AJOUT)
   onAjouterInstance?: () => void
   plafondAtteint?: boolean
+  // Présent uniquement pour les blocs où la suppression est autorisée — gère
+  // elle-même la distinction élément du snapshot / ajouté pendant la session.
+  onSupprimerInstance?: (groupeId: string) => void
 }
 
 export default function BlocCard({
-  bloc, formState, instances, onChange, perimetre, onAjouterInstance, plafondAtteint,
+  bloc, formState, instances, onChange, perimetre, onAjouterInstance, plafondAtteint, onSupprimerInstance,
 }: Props) {
+  const [confirmSuppression, setConfirmSuppression] = useState<string | null>(null)
+
   const fixedQuestions = bloc.questions.filter(q => !q.repete)
-  const repeatableQuestions = bloc.questions.filter(q => q.repete)
+  // Les questions "systeme" (marqueurs de suppression) ne sont jamais affichées —
+  // adressables uniquement via handleSupprimerInstance, jamais par l'utilisateur.
+  const repeatableQuestions = bloc.questions.filter(q => q.repete && !q.systeme)
 
   return (
     <div
@@ -109,19 +117,75 @@ export default function BlocCard({
                   marginBottom: idx < instances.length - 1 ? spacing[6] : 0,
                 }}
               >
-                <p
+                <div
                   style={{
-                    fontFamily: fonts.body,
-                    fontSize: fontSizes.xs,
-                    fontWeight: fontWeights.bold,
-                    letterSpacing: letterSpacings.wide,
-                    textTransform: 'uppercase' as const,
-                    color: colors.textMid,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
                     marginBottom: spacing[4],
                   }}
                 >
-                  Élément {idx + 1}
-                </p>
+                  <p
+                    style={{
+                      fontFamily: fonts.body,
+                      fontSize: fontSizes.xs,
+                      fontWeight: fontWeights.bold,
+                      letterSpacing: letterSpacings.wide,
+                      textTransform: 'uppercase' as const,
+                      color: colors.textMid,
+                      margin: 0,
+                    }}
+                  >
+                    Élément {idx + 1}
+                  </p>
+
+                  {onSupprimerInstance && (
+                    confirmSuppression === groupeId ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                        <span style={{ fontFamily: fonts.body, fontSize: fontSizes.xs, color: colors.textMid }}>
+                          Confirmer ?
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => { onSupprimerInstance(groupeId); setConfirmSuppression(null) }}
+                          style={{
+                            fontFamily: fonts.body, fontSize: '0.62rem', fontWeight: fontWeights.medium,
+                            letterSpacing: '0.08em', textTransform: 'uppercase' as const, padding: '3px 8px',
+                            backgroundColor: 'transparent', color: colors.danger, border: `1px solid ${colors.dangerBorder}`,
+                            cursor: 'pointer', transition: transitions.fast,
+                          }}
+                        >
+                          Oui, supprimer
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmSuppression(null)}
+                          style={{
+                            fontFamily: fonts.body, fontSize: '0.62rem', fontWeight: fontWeights.medium,
+                            letterSpacing: '0.08em', textTransform: 'uppercase' as const, padding: '3px 8px',
+                            backgroundColor: 'transparent', color: colors.textMid, border: `1px solid ${colors.border}`,
+                            cursor: 'pointer', transition: transitions.fast,
+                          }}
+                        >
+                          Annuler
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmSuppression(groupeId)}
+                        style={{
+                          fontFamily: fonts.body, fontSize: '0.62rem', fontWeight: fontWeights.medium,
+                          letterSpacing: '0.08em', textTransform: 'uppercase' as const, padding: '3px 8px',
+                          backgroundColor: 'transparent', color: colors.danger, border: `1px solid ${colors.dangerBorder}`,
+                          cursor: 'pointer', transition: transitions.fast,
+                        }}
+                      >
+                        Supprimer
+                      </button>
+                    )
+                  )}
+                </div>
 
                 {repeatableQuestions.map(question => {
                   // Condition résolue DANS la même instance (groupeId) — ex :

@@ -114,7 +114,7 @@ export default function PatrimoinePage() {
                 <tr key={a.id}>
                   <TD>
                     <select style={selStyle} value={a.nature} onChange={setActif(i, 'nature')}>
-                      {['AV','PER','SCPI','Capitalisation','PEA','CTO','Livret','Autre'].map(v => <option key={v}>{v}</option>)}
+                      {['AV','PER','SCPI','Capitalisation','PEA','CTO','Livret','CompteCourant','PrivateEquity','Autre'].map(v => <option key={v}>{v}</option>)}
                     </select>
                   </TD>
                   <TD><CI val={a.libelle} onChange={setActif(i, 'libelle')} /></TD>
@@ -148,7 +148,7 @@ export default function PatrimoinePage() {
                 <tr key={b.id}>
                   <TD>
                     <select style={selStyle} value={b.nature} onChange={setBien(i, 'nature')}>
-                      {['RP','RS','Locatif','SCI','Autre'].map(v => <option key={v}>{v}</option>)}
+                      {['RP','RS','LocatifNu','LocatifMeuble','SCI','Terrain','Autre'].map(v => <option key={v}>{v}</option>)}
                     </select>
                   </TD>
                   <TD>

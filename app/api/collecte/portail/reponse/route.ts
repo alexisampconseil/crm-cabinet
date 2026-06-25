@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
-import { getSession, getVersionById, upsertReponse } from '@/lib/collecte'
+import { getSession, getVersionById, upsertReponse, deleteReponsesByGroupe } from '@/lib/collecte'
 
 // Codes valides — alignés avec les CHECK constraints de migration 009
 const BLOCS = [
@@ -229,6 +229,75 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     console.error('[portail/reponse]', err)
     const message = err instanceof Error ? err.message : 'Erreur lors de la sauvegarde'
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
+}
+
+const DeletePayloadSchema = z.object({
+  kyc_token:          z.string().min(1, 'kyc_token requis'),
+  groupe_instance_id: z.string().uuid('groupe_instance_id doit être un UUID valide'),
+})
+
+// DELETE /api/collecte/portail/reponse
+// Nettoyage d'une instance ajoutée PENDANT la session, puis supprimée par le
+// client AVANT soumission — purge questionnaire_reponses pour ce groupe.
+// Ne concerne jamais une instance issue du référentiel (snapshot) : la
+// suppression d'un élément existant passe par un écart type_ecart='suppression'
+// (détecté à la soumission), jamais par une suppression directe ici — cette
+// route ne fait que nettoyer un brouillon d'ajout abandonné avant envoi.
+// Authentification : kyc_token uniquement, même garde-fous que POST.
+export async function DELETE(request: NextRequest) {
+  const body = await request.json().catch(() => null)
+  if (!body) return NextResponse.json({ error: 'Corps de requête invalide' }, { status: 400 })
+
+  const parsed = DeletePayloadSchema.safeParse(body)
+  if (!parsed.success) {
+    const msg = parsed.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; ')
+    return NextResponse.json({ error: msg }, { status: 422 })
+  }
+  const { kyc_token, groupe_instance_id } = parsed.data
+
+  const { data: tokenRow, error: tokenError } = await supabaseAdmin
+    .from('kyc_tokens')
+    .select('id, used_at, expires_at, collecte_session_id')
+    .eq('token', kyc_token)
+    .maybeSingle()
+
+  if (tokenError || !tokenRow) {
+    return NextResponse.json({ error: 'Token invalide ou introuvable' }, { status: 401 })
+  }
+  if (tokenRow.used_at) {
+    return NextResponse.json({ error: 'Ce lien a déjà été utilisé' }, { status: 410 })
+  }
+  if (new Date(tokenRow.expires_at) < new Date()) {
+    return NextResponse.json({ error: 'Ce lien a expiré — contactez votre conseiller' }, { status: 410 })
+  }
+  if (!tokenRow.collecte_session_id) {
+    return NextResponse.json({ error: 'Aucune session de collecte associée à ce lien' }, { status: 409 })
+  }
+
+  const sessionId = tokenRow.collecte_session_id
+
+  let session
+  try {
+    session = await getSession(sessionId, supabaseAdmin)
+  } catch {
+    return NextResponse.json({ error: 'Session introuvable' }, { status: 404 })
+  }
+
+  if (session.statut !== 'en_cours') {
+    return NextResponse.json(
+      { error: `La session est verrouillée (statut : ${session.statut}) — aucune modification autorisée` },
+      { status: 409 }
+    )
+  }
+
+  try {
+    await deleteReponsesByGroupe(sessionId, groupe_instance_id, supabaseAdmin)
+    return NextResponse.json({ success: true })
+  } catch (err) {
+    console.error('[portail/reponse DELETE]', err)
+    const message = err instanceof Error ? err.message : 'Erreur lors de la suppression'
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }

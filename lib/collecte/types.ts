@@ -104,6 +104,10 @@ export interface QuestionnaireQuestion {
   portee: QuestionnaireReponsePortee
   obligatoire: boolean
   repete: boolean
+  // Question technique jamais affichée au client (BlocCard la filtre du rendu) —
+  // utilisée comme marqueur de suppression d'instance répétable. Adressable
+  // via makeFormKey/saveField comme une question normale, simplement invisible.
+  systeme?: boolean
   placeholder?: string
   // Chemin de préremplissage dans snapshot_prefill.
   // Pour les questions non-répétables : chemin absolu depuis la racine,

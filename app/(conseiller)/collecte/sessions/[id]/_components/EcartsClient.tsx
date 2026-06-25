@@ -72,6 +72,15 @@ const ajoutBadgeStyle: React.CSSProperties = {
   marginLeft: spacing[2],
 }
 
+const suppressionBadgeStyle: React.CSSProperties = {
+  ...badgeBase,
+  backgroundColor: colors.dangerBg,
+  color: colors.danger,
+  border: `1px solid ${colors.dangerBorder}`,
+  whiteSpace: 'nowrap' as const,
+  marginLeft: spacing[2],
+}
+
 // ── Props ───────────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -351,6 +360,9 @@ export default function EcartsClient({ initialEcarts, sessionId, initialStatut }
                       </span>
                       {isAjout && premierDuGroupe && (
                         <span style={ajoutBadgeStyle}>Nouvel élément</span>
+                      )}
+                      {ecart.type_ecart === 'suppression' && (
+                        <span style={suppressionBadgeStyle}>Suppression demandée</span>
                       )}
                     </td>
                     <td style={{ ...tableCell, maxWidth: '260px' }}>

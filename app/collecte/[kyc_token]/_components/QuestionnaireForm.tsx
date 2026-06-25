@@ -32,10 +32,23 @@ import BlocCard from './BlocCard'
 type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error'
 
 // Blocs où l'ajout d'une nouvelle instance est autorisé (Phase 8, objectif 1).
+// Réutilisé tel quel pour la suppression (même périmètre métier — un élément
+// qu'on peut ajouter pendant la session, on doit pouvoir le retirer).
 // 'enfants' (bloc foyer) reste hors scope malgré la même limitation technique.
 const BLOCS_AVEC_AJOUT = new Set([
   'revenus', 'charges', 'actifs_financiers', 'immobilier', 'passifs', 'objectifs',
 ])
+
+// Question marqueur de suppression par bloc répétable — cf. mapping.ts
+// (COLONNE_SUPPRESSION) et detection.ts. Jamais affichée (systeme: true).
+const SUPPRIME_QUESTION: Record<string, { code: string; portee: QuestionnaireReponsePortee }> = {
+  actifs_financiers: { code: 'af_supprime',     portee: 'client' },
+  immobilier:        { code: 'immo_supprime',   portee: 'client' },
+  passifs:           { code: 'passif_supprime', portee: 'foyer'  },
+  revenus:           { code: 'rev_supprime',    portee: 'foyer'  },
+  charges:           { code: 'chg_supprime',    portee: 'foyer'  },
+  objectifs:         { code: 'obj_supprime',    portee: 'client' },
+}
 
 interface ResolvedMeta {
   bloc: QuestionnaireReponseBloc
@@ -220,6 +233,71 @@ export default function QuestionnaireForm({
     setNouvellesInstances(prev => new Set(prev).add(id))
   }
 
+  // ── Suppression d'une instance dans un bloc répétable ────────────────────────
+  // Le questionnaire décrit la situation PATRIMONIALE ACTUELLE — un actif vendu,
+  // un compte clôturé, un crédit remboursé doit pouvoir être retiré. Mais aucune
+  // suppression directe en base : le référentiel n'est modifié qu'après
+  // validation conseiller (écart type_ecart='suppression', symétrique à 'ajout').
+  // Deux cas distincts :
+  //   - Instance ajoutée PENDANT cette session, jamais soumise : simple
+  //     nettoyage (autosave purgé) — rien n'a jamais existé dans le référentiel.
+  //   - Instance issue du snapshot (référentiel) : un marqueur est envoyé via
+  //     l'autosave existant — detecterEcarts() le transformera en écart de
+  //     suppression à la soumission, pour décision conseiller.
+  const handleSupprimerInstance = async (blocCode: string, groupeId: string) => {
+    setInstances(prev => {
+      const next = new Map(prev)
+      next.set(blocCode, (next.get(blocCode) ?? []).filter(id => id !== groupeId))
+      return next
+    })
+
+    if (nouvellesInstances.has(groupeId)) {
+      setNouvellesInstances(prev => {
+        const next = new Set(prev)
+        next.delete(groupeId)
+        return next
+      })
+      try {
+        await fetch('/api/collecte/portail/reponse', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ kyc_token: kycToken, groupe_instance_id: groupeId }),
+        })
+      } catch {
+        // Best-effort : l'instance reste de toute façon invisible côté UI et
+        // n'a jamais existé dans le référentiel — aucune conséquence si la
+        // purge de l'autosave échoue.
+      }
+      return
+    }
+
+    const marker = SUPPRIME_QUESTION[blocCode]
+    if (!marker) return
+
+    const key = makeFormKey(marker.code, marker.portee, groupeId)
+    setFormState(prev => new Map(prev).set(key, 'true'))
+    setSaveStatus('saving')
+    try {
+      const res = await fetch('/api/collecte/portail/reponse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kyc_token:          kycToken,
+          bloc:               blocCode,
+          question_code:      marker.code,
+          portee:             marker.portee,
+          groupe_instance_id: groupeId,
+          reponse_type:       'booleen',
+          reponse_valeur:     'true',
+          reponse_metadata:   {},
+        }),
+      })
+      setSaveStatus(res.ok ? 'saved' : 'error')
+    } catch {
+      setSaveStatus('error')
+    }
+  }
+
   // ── Autosave ────────────────────────────────────────────────────────────────
 
   const saveField = async (key: string, value: string) => {
@@ -348,6 +426,9 @@ export default function QuestionnaireForm({
             BLOCS_AVEC_AJOUT.has(bloc.code) ? () => handleAjouterInstance(bloc.code) : undefined
           }
           plafondAtteint={(instances.get(bloc.code) ?? []).length >= PLAFOND_INSTANCES_PAR_BLOC}
+          onSupprimerInstance={
+            BLOCS_AVEC_AJOUT.has(bloc.code) ? (groupeId) => handleSupprimerInstance(bloc.code, groupeId) : undefined
+          }
         />
       ))}
 

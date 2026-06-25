@@ -37,6 +37,9 @@ function coerceValeur(valeur: string | null, type: ColonneType): unknown {
 // type_ecart='ajout' :
 //   INSERT avec entite_id = faux UUID temporaire (généré côté client) — remplacé
 //   par l'id réel après succès. Voir COLONNES_OBLIGATOIRES_INSERT (mapping.ts).
+// type_ecart='suppression' :
+//   DELETE WHERE id = entite_id — entite_id est déjà l'id réel (l'instance
+//   existait dans le snapshot). Aucune colonne à fusionner ni à vérifier.
 // Traçabilité : statut='traite', applique_le sur chaque écart appliqué.
 // session_ecarts n'a pas de colonne applique_par (migration 010) — seul applique_le
 // est tracé. userId est conservé dans la signature pour un futur ajout de colonne.
@@ -83,7 +86,9 @@ export async function appliquerEcarts(
     const mappingKey = `${ecart.question_code}|${ecart.portee}`
     const entry = ECART_MAPPING[mappingKey]
     if (!entry) continue
-    if (!ecart.colonne_cible) continue
+    // Une suppression n'a pas de colonne_cible (rien à modifier, la ligne
+    // entière sera supprimée) — seuls modification/ajout en exigent une.
+    if (!ecart.colonne_cible && ecart.type_ecart !== 'suppression') continue
 
     const batchKey = `${ecart.entite_cible}::${ecart.entite_id ?? '__simple__'}`
     if (!batchMap.has(batchKey)) {
@@ -98,12 +103,18 @@ export async function appliquerEcarts(
       })
     }
 
-    const batch     = batchMap.get(batchKey)!
+    const batch = batchMap.get(batchKey)!
+
+    if (ecart.type_ecart === 'suppression') {
+      batch.ecart_ids.push(ecart.id)
+      continue
+    }
+
     const valeurRaw = (ecart.valeur_proposee as { valeur: string | null } | null)?.valeur ?? null
 
     try {
       const valeur = coerceValeur(valeurRaw, entry.colonne_type)
-      const [colonneOuJson, sousChamp] = ecart.colonne_cible.split('.')
+      const [colonneOuJson, sousChamp] = (ecart.colonne_cible as string).split('.')
 
       if (sousChamp) {
         if (!batch.jsonColumns[colonneOuJson]) batch.jsonColumns[colonneOuJson] = {}
@@ -139,6 +150,7 @@ export async function appliquerEcarts(
       // Modification (ligne existante) : lire la valeur JSONB actuelle pour
       // ne pas écraser les sous-champs déjà renseignés par ailleurs (CRM ou
       // précédente application d'écarts).
+      // Suppression : aucune colonne, sans objet — jsonColumns est toujours vide.
       const jsonColNames = Object.keys(batch.jsonColumns)
       if (jsonColNames.length > 0) {
         if (batch.type_ecart === 'ajout') {
@@ -159,7 +171,10 @@ export async function appliquerEcarts(
         }
       }
 
-      if (batch.type_ecart === 'ajout') {
+      if (batch.type_ecart === 'suppression') {
+        const res = await table.delete().eq('id', batch.entite_id)
+        opError = res.error
+      } else if (batch.type_ecart === 'ajout') {
         const columns: Record<string, unknown> = { ...batch.columns, client_id: clientId }
 
         // Cas spécial : budget_postes.type n'est jamais saisi par le client —

@@ -28,6 +28,13 @@ export interface MappingEntry {
   colonne_type:  ColonneType
 }
 
+// Sentinel colonne_cible pour les marqueurs de suppression d'instance —
+// jamais un nom de colonne réel. Reconnu spécifiquement par detection.ts
+// (génère un écart type_ecart='suppression' au lieu d'une comparaison de
+// valeur classique) et application.ts (exécute un DELETE sur toute la ligne
+// au lieu d'un UPDATE/INSERT de colonne).
+export const COLONNE_SUPPRESSION = '__suppression__'
+
 export const ECART_MAPPING: Record<string, MappingEntry> = {
 
   // ── Identité — table : famille ─────────────────────────────────────────────
@@ -132,7 +139,6 @@ export const ECART_MAPPING: Record<string, MappingEntry> = {
   // colonne_cible pointée (detail.xxx) : fusion JSONB gérée par application.ts,
   // jamais un UPDATE de colonne plate. Voir services/application.ts.
   'rev_nature|foyer':                 { entite_cible: 'budget_postes', colonne_cible: 'nature',                       niveau_impact: 'moyen',  colonne_type: 'text' },
-  'rev_employeur|foyer':              { entite_cible: 'budget_postes', colonne_cible: 'detail.employeur',             niveau_impact: 'faible', colonne_type: 'text' },
   'rev_nature_activite|foyer':        { entite_cible: 'budget_postes', colonne_cible: 'detail.nature_activite',       niveau_impact: 'faible', colonne_type: 'text' },
   'rev_regime_fiscal|foyer':          { entite_cible: 'budget_postes', colonne_cible: 'detail.regime_fiscal',         niveau_impact: 'faible', colonne_type: 'text' },
   'rev_societe_distributrice|foyer':  { entite_cible: 'budget_postes', colonne_cible: 'detail.societe',               niveau_impact: 'faible', colonne_type: 'text' },
@@ -161,6 +167,32 @@ export const ECART_MAPPING: Record<string, MappingEntry> = {
   // Passifs — capital restant dû + quotité — table : passifs (répétable)
   'passif_capital_restant_du|foyer': { entite_cible: 'passifs', colonne_cible: 'capital_restant_du', niveau_impact: 'fort',  colonne_type: 'number' },
   'passif_quotite|foyer':            { entite_cible: 'passifs', colonne_cible: 'detail.quotite',     niveau_impact: 'moyen', colonne_type: 'number' },
+
+  // ── Questionnaire v1.3 ────────────────────────────────────────────────────
+
+  // Immobilier — régime fiscal (bien locatif uniquement) — table : patrimoine_immobilier
+  // Remplacé en v1.4 par deux questions distinctes (foncier vs meublé/BIC,
+  // fiscalité réellement différente) — voir section "Questionnaire v1.4" plus bas.
+
+  // Marqueurs de suppression d'instance — colonne_cible = COLONNE_SUPPRESSION
+  // (sentinel reconnu par detection.ts/application.ts, jamais un nom de colonne
+  // réel). Une seule réponse à 'true' déclenche un écart type_ecart='suppression'
+  // sur toute l'entité (la ligne entière), pas un champ. Questions "systeme"
+  // dans le questionnaire — jamais affichées (BlocCard les filtre du rendu).
+  'af_supprime|client':     { entite_cible: 'actifs_financiers',     colonne_cible: COLONNE_SUPPRESSION, niveau_impact: 'fort', colonne_type: 'boolean' },
+  'immo_supprime|client':   { entite_cible: 'patrimoine_immobilier', colonne_cible: COLONNE_SUPPRESSION, niveau_impact: 'fort', colonne_type: 'boolean' },
+  'passif_supprime|foyer':  { entite_cible: 'passifs',               colonne_cible: COLONNE_SUPPRESSION, niveau_impact: 'fort', colonne_type: 'boolean' },
+  'rev_supprime|foyer':     { entite_cible: 'budget_postes',         colonne_cible: COLONNE_SUPPRESSION, niveau_impact: 'fort', colonne_type: 'boolean' },
+  'chg_supprime|foyer':     { entite_cible: 'budget_postes',         colonne_cible: COLONNE_SUPPRESSION, niveau_impact: 'fort', colonne_type: 'boolean' },
+  'obj_supprime|client':    { entite_cible: 'objectifs',             colonne_cible: COLONNE_SUPPRESSION, niveau_impact: 'fort', colonne_type: 'boolean' },
+
+  // ── Questionnaire v1.4 ────────────────────────────────────────────────────
+  // Logique conditionnelle pilotée par type de produit (af_nature / immo_nature) —
+  // voir QUESTIONS_PAR_NATURE_AF / QUESTIONS_PAR_NATURE_IMMO dans le script de
+  // génération du seed. Régime fiscal scindé : la fiscalité d'un bien loué nu
+  // (revenus fonciers) diffère réellement de celle d'un bien loué meublé (BIC).
+  'immo_regime_fiscal_foncier|client': { entite_cible: 'patrimoine_immobilier', colonne_cible: 'detail.regime_fiscal', niveau_impact: 'moyen', colonne_type: 'text' },
+  'immo_regime_fiscal_meuble|client':  { entite_cible: 'patrimoine_immobilier', colonne_cible: 'detail.regime_fiscal', niveau_impact: 'moyen', colonne_type: 'text' },
 }
 
 // =============================================================================

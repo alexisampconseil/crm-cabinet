@@ -131,7 +131,7 @@ export interface Objectif {
 export interface ActifFinancier {
   id: string
   client_id: string
-  nature: 'AV' | 'PER' | 'SCPI' | 'Capitalisation' | 'PEA' | 'CTO' | 'Livret' | 'Autre'
+  nature: 'AV' | 'PER' | 'SCPI' | 'Capitalisation' | 'PEA' | 'CTO' | 'Livret' | 'CompteCourant' | 'PrivateEquity' | 'Autre'
   libelle: string
   montant: number | null
   souscrit_par: 'client' | 'conjoint' | 'commun' | null
@@ -143,7 +143,7 @@ export interface ActifFinancier {
 export interface BienImmobilier {
   id: string
   client_id: string
-  nature: 'RP' | 'RS' | 'Locatif' | 'SCI' | 'Autre'
+  nature: 'RP' | 'RS' | 'Locatif' | 'LocatifNu' | 'LocatifMeuble' | 'SCI' | 'Terrain' | 'Autre'
   valeur: number | null
   detenu_par: 'client' | 'conjoint' | 'commun' | 'SCI' | null
   mode_detention: string | null

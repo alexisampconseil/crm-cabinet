@@ -8,9 +8,14 @@
 //   soumis + N écarts → en_revue
 //
 // Limitations v1 (intentionnelles) :
-//   - type_ecart = 'modification' ou 'ajout' (pas de 'suppression')
+//   - type_ecart = 'modification', 'ajout' ou 'suppression'
 //   - 'ajout' : généré uniquement si reponse_metadata.nouvelle_instance=true ET
 //     au moins un champ requis (CHAMPS_REQUIS_AJOUT) est renseigné — sinon ignoré
+//   - 'suppression' : généré quand une question marqueur (colonne_cible=
+//     COLONNE_SUPPRESSION) vaut 'true' pour une instance présente dans le
+//     snapshot — un seul écart pour toute l'entité, pas par champ. Les autres
+//     réponses de cette même instance sont ignorées (l'entité va être supprimée,
+//     ses modifications de champ individuelles sont sans objet).
 //   - valeur_proposee construit depuis reponse_valeur (string), pas reponse_metadata
 //   - Comparaison string normalisée (pas de tolérance numérique)
 //   - Groupe_instance_id absent du snapshot sans flag nouvelle_instance → ignoré (log warning)
@@ -30,7 +35,7 @@ import type {
   SessionEcartNiveauImpact,
   SessionEcartTypeEcart,
 } from '../types'
-import { ECART_MAPPING, NIVEAU_IMPACT_AJOUT, CHAMPS_REQUIS_AJOUT, type MappingEntry } from '../mapping'
+import { ECART_MAPPING, NIVEAU_IMPACT_AJOUT, CHAMPS_REQUIS_AJOUT, COLONNE_SUPPRESSION, type MappingEntry } from '../mapping'
 
 // ── Types internes ────────────────────────────────────────────────────────────
 
@@ -57,7 +62,7 @@ interface EcartRow {
   portee:             string
   groupe_instance_id: string | null
   entite_cible:       string
-  colonne_cible:      string
+  colonne_cible:      string | null
   entite_id:          string | null
   type_ecart:         SessionEcartTypeEcart
   valeur_reference:   { valeur: string | null }
@@ -247,6 +252,29 @@ export async function detecterEcarts(
   // Clé externe : bloc_code — clé interne : groupe_instance_id.
   const candidatsAjout = new Map<string, Map<string, CandidatAjout[]>>()
 
+  // Instances marquées pour suppression (question marqueur = 'true') — détectées
+  // dans une pré-passe pour pouvoir, dans la boucle principale, ignorer les
+  // autres réponses de la même instance (sans objet si l'entité va disparaître).
+  // Clé externe : bloc_code — clé interne : groupe_instance_id.
+  interface Suppression { mappingEntry: MappingEntry; portee: string; reponseId: string }
+  const instancesASupprimer = new Map<string, Map<string, Suppression>>()
+
+  for (const reponse of reponses) {
+    const qKey   = `${reponse.question_code}|${reponse.portee}`
+    const qEntry = questionIndex.get(qKey)
+    if (!qEntry || !qEntry.repete) continue
+
+    const mappingEntry = ECART_MAPPING[qKey]
+    const groupeId      = reponse.groupe_instance_id as string | null
+    if (!mappingEntry || mappingEntry.colonne_cible !== COLONNE_SUPPRESSION || !groupeId) continue
+    if (normalizeValue(reponse.reponse_valeur as string | null) !== 'true') continue
+
+    if (!instancesASupprimer.has(qEntry.bloc_code)) instancesASupprimer.set(qEntry.bloc_code, new Map())
+    instancesASupprimer.get(qEntry.bloc_code)!.set(groupeId, {
+      mappingEntry, portee: reponse.portee as string, reponseId: reponse.id as string,
+    })
+  }
+
   for (const reponse of reponses) {
     const qKey   = `${reponse.question_code}|${reponse.portee}`
     const qEntry = questionIndex.get(qKey)
@@ -254,6 +282,7 @@ export async function detecterEcarts(
 
     const mappingEntry = ECART_MAPPING[qKey]
     if (!mappingEntry) continue  // question sans mapping métier connu
+    if (mappingEntry.colonne_cible === COLONNE_SUPPRESSION) continue  // traité en post-passe (étape 7c)
 
     let snapshotVal: string
     let entiteId:     string | null = null
@@ -266,6 +295,10 @@ export async function detecterEcarts(
       // Question répétable : retrouver l'item par groupe_instance_id
       const groupeId = reponse.groupe_instance_id as string | null
       if (!groupeId) continue  // anomalie — répétable sans instance id
+
+      // Instance marquée pour suppression : ignorer les modifications de champ
+      // individuelles — seul l'écart de suppression (post-passe) doit exister.
+      if (instancesASupprimer.get(qEntry.bloc_code)?.has(groupeId)) continue
 
       const item = repeteItems.get(qEntry.bloc_code)?.get(groupeId)
 
@@ -367,6 +400,42 @@ export async function detecterEcarts(
           statut:        'a_revoir',
         })
       }
+    }
+  }
+
+  // 7c. Traiter les instances marquées pour suppression ──────────────────────
+  // Un seul écart par instance, sur toute l'entité — pas de colonne_cible
+  // (rien à modifier, la ligne entière sera supprimée par application.ts).
+  // Si l'instance n'existe pas dans le snapshot (cas anormal — une instance
+  // ajoutée puis supprimée avant soumission doit être nettoyée côté client,
+  // jamais soumise), elle est ignorée par sécurité plutôt que de générer un
+  // écart de suppression sans rien de réel à supprimer.
+  for (const [blocCode, parGroupe] of instancesASupprimer) {
+    const blocEntry = structure.blocs.find(b => b.code === blocCode)
+    for (const [groupeId, { mappingEntry, portee, reponseId }] of parGroupe) {
+      const item = repeteItems.get(blocCode)?.get(groupeId)
+      if (!item) continue
+
+      const instanceIdx = instanceIndex.get(blocCode)?.get(groupeId)
+      const instanceLabel = instanceIdx != null ? ` — Élément ${instanceIdx + 1}` : ''
+
+      ecartsACreer.push({
+        session_id:         sessionId,
+        reponse_id:         reponseId,
+        bloc:               blocCode,
+        question_code:      `${blocCode}_supprime`,
+        portee,
+        groupe_instance_id: groupeId,
+        entite_cible:       mappingEntry.entite_cible,
+        colonne_cible:      null,
+        entite_id:          groupeId,
+        type_ecart:         'suppression',
+        valeur_reference:   { valeur: 'present' },
+        valeur_proposee:    { valeur: 'supprime' },
+        libelle_lisible:    `Suppression demandée — ${blocEntry?.libelle ?? blocCode}${instanceLabel}`,
+        niveau_impact:      mappingEntry.niveau_impact,
+        statut:             'a_revoir',
+      })
     }
   }
 
