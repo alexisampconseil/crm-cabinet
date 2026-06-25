@@ -107,6 +107,60 @@ export const ECART_MAPPING: Record<string, MappingEntry> = {
   'obj_libelle|client':       { entite_cible: 'objectifs', colonne_cible: 'libelle',       niveau_impact: 'faible', colonne_type: 'text'   },
   'obj_horizon|client':       { entite_cible: 'objectifs', colonne_cible: 'horizon',       niveau_impact: 'faible', colonne_type: 'text'   },
   'obj_montant_cible|client': { entite_cible: 'objectifs', colonne_cible: 'montant_cible', niveau_impact: 'moyen',  colonne_type: 'number' },
+
+  // ── Questionnaire v1.2 ────────────────────────────────────────────────────
+
+  // Identité — coordonnées + lieu de naissance — table : famille ───────────
+  'id_email|client':          { entite_cible: 'famille', colonne_cible: 'email',          niveau_impact: 'faible', colonne_type: 'text' },
+  'id_telephone|client':      { entite_cible: 'famille', colonne_cible: 'telephone',      niveau_impact: 'faible', colonne_type: 'text' },
+  'id_lieu_naissance|client': { entite_cible: 'famille', colonne_cible: 'lieu_naissance', niveau_impact: 'faible', colonne_type: 'text' },
+
+  // Foyer — coordonnées conjoint + lieu de naissance — table : famille ──────
+  'foy_lieu_naissance|conjoint':    { entite_cible: 'famille', colonne_cible: 'conjoint_lieu_naissance', niveau_impact: 'faible', colonne_type: 'text' },
+  'foy_conjoint_email|conjoint':    { entite_cible: 'famille', colonne_cible: 'conjoint_email',          niveau_impact: 'faible', colonne_type: 'text' },
+  'foy_conjoint_telephone|conjoint':{ entite_cible: 'famille', colonne_cible: 'conjoint_telephone',      niveau_impact: 'faible', colonne_type: 'text' },
+
+  // Foyer — situation familiale étendue (mariage, PACS, donation) — table : famille
+  'foy_date_mariage|foyer':            { entite_cible: 'famille', colonne_cible: 'date_mariage',            niveau_impact: 'faible', colonne_type: 'text'    },
+  'foy_contrat_mariage|foyer':         { entite_cible: 'famille', colonne_cible: 'contrat_mariage',         niveau_impact: 'faible', colonne_type: 'boolean' },
+  'foy_date_contrat_mariage|foyer':    { entite_cible: 'famille', colonne_cible: 'date_contrat_mariage',    niveau_impact: 'faible', colonne_type: 'text'    },
+  'foy_donation_dernier_vivant|foyer': { entite_cible: 'famille', colonne_cible: 'donation_dernier_vivant', niveau_impact: 'moyen',  colonne_type: 'boolean' },
+  'foy_regime_pacs|foyer':             { entite_cible: 'famille', colonne_cible: 'regime_pacs',             niveau_impact: 'moyen',  colonne_type: 'text'    },
+  'foy_date_pacs|foyer':               { entite_cible: 'famille', colonne_cible: 'date_pacs',               niveau_impact: 'faible', colonne_type: 'text'    },
+
+  // Revenus — nature + détail conditionnel — table : budget_postes (répétable)
+  // colonne_cible pointée (detail.xxx) : fusion JSONB gérée par application.ts,
+  // jamais un UPDATE de colonne plate. Voir services/application.ts.
+  'rev_nature|foyer':                 { entite_cible: 'budget_postes', colonne_cible: 'nature',                       niveau_impact: 'moyen',  colonne_type: 'text' },
+  'rev_employeur|foyer':              { entite_cible: 'budget_postes', colonne_cible: 'detail.employeur',             niveau_impact: 'faible', colonne_type: 'text' },
+  'rev_nature_activite|foyer':        { entite_cible: 'budget_postes', colonne_cible: 'detail.nature_activite',       niveau_impact: 'faible', colonne_type: 'text' },
+  'rev_regime_fiscal|foyer':          { entite_cible: 'budget_postes', colonne_cible: 'detail.regime_fiscal',         niveau_impact: 'faible', colonne_type: 'text' },
+  'rev_societe_distributrice|foyer':  { entite_cible: 'budget_postes', colonne_cible: 'detail.societe',               niveau_impact: 'faible', colonne_type: 'text' },
+  'rev_nature_produit|foyer':         { entite_cible: 'budget_postes', colonne_cible: 'detail.nature_produit',        niveau_impact: 'faible', colonne_type: 'text' },
+  'rev_beneficiaire_debiteur|foyer':  { entite_cible: 'budget_postes', colonne_cible: 'detail.beneficiaire_debiteur', niveau_impact: 'faible', colonne_type: 'text' },
+  'rev_organisme_payeur|foyer':       { entite_cible: 'budget_postes', colonne_cible: 'detail.organisme_payeur',      niveau_impact: 'faible', colonne_type: 'text' },
+  'rev_precision_autre|foyer':        { entite_cible: 'budget_postes', colonne_cible: 'detail.precision',             niveau_impact: 'faible', colonne_type: 'text' },
+
+  // Actifs financiers — démembrement — table : actifs_financiers (répétable)
+  'af_mode_detention|client':     { entite_cible: 'actifs_financiers', colonne_cible: 'detail.mode_detention',     niveau_impact: 'fort',   colonne_type: 'text'   },
+  'af_age_usufruitier|client':    { entite_cible: 'actifs_financiers', colonne_cible: 'detail.age_usufruitier',    niveau_impact: 'moyen',  colonne_type: 'number' },
+  'af_date_demembrement|client':  { entite_cible: 'actifs_financiers', colonne_cible: 'detail.date_demembrement',  niveau_impact: 'moyen',  colonne_type: 'text'   },
+  'af_type_demembrement|client':  { entite_cible: 'actifs_financiers', colonne_cible: 'detail.type_demembrement',  niveau_impact: 'moyen',  colonne_type: 'text'   },
+  'af_lien_usufruitier|client':   { entite_cible: 'actifs_financiers', colonne_cible: 'detail.lien_usufruitier',   niveau_impact: 'faible', colonne_type: 'text'   },
+
+  // Immobilier — démembrement, typologie, quote-part, acquisition — table : patrimoine_immobilier (répétable)
+  'immo_mode_detention|client':    { entite_cible: 'patrimoine_immobilier', colonne_cible: 'detail.mode_detention',    niveau_impact: 'fort',   colonne_type: 'text'   },
+  'immo_age_usufruitier|client':   { entite_cible: 'patrimoine_immobilier', colonne_cible: 'detail.age_usufruitier',   niveau_impact: 'moyen',  colonne_type: 'number' },
+  'immo_date_demembrement|client': { entite_cible: 'patrimoine_immobilier', colonne_cible: 'detail.date_demembrement', niveau_impact: 'moyen',  colonne_type: 'text'   },
+  'immo_type_demembrement|client': { entite_cible: 'patrimoine_immobilier', colonne_cible: 'detail.type_demembrement', niveau_impact: 'moyen',  colonne_type: 'text'   },
+  'immo_lien_usufruitier|client':  { entite_cible: 'patrimoine_immobilier', colonne_cible: 'detail.lien_usufruitier',  niveau_impact: 'faible', colonne_type: 'text'   },
+  'immo_type_bien|client':         { entite_cible: 'patrimoine_immobilier', colonne_cible: 'detail.type_bien',         niveau_impact: 'moyen',  colonne_type: 'text'   },
+  'immo_quote_part|client':        { entite_cible: 'patrimoine_immobilier', colonne_cible: 'quote_part_detenue',       niveau_impact: 'moyen',  colonne_type: 'number' },
+  'immo_date_acquisition|client':  { entite_cible: 'patrimoine_immobilier', colonne_cible: 'date_acquisition',         niveau_impact: 'faible', colonne_type: 'text'   },
+
+  // Passifs — capital restant dû + quotité — table : passifs (répétable)
+  'passif_capital_restant_du|foyer': { entite_cible: 'passifs', colonne_cible: 'capital_restant_du', niveau_impact: 'fort',  colonne_type: 'number' },
+  'passif_quotite|foyer':            { entite_cible: 'passifs', colonne_cible: 'detail.quotite',     niveau_impact: 'moyen', colonne_type: 'number' },
 }
 
 // =============================================================================

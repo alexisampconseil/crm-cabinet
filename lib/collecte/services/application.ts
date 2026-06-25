@@ -68,6 +68,11 @@ export async function appliquerEcarts(
     bloc:         string
     type_ecart:   SessionEcartTypeEcart
     columns:      Record<string, unknown>
+    // Sous-champs JSONB en attente de fusion, indexés par colonne JSONB.
+    // colonne_cible "detail.mode_detention" → jsonColumns.detail.mode_detention.
+    // Fusionnés dans `columns` juste avant l'exécution (cf. étape 3) — jamais
+    // un UPDATE direct sur une colonne nommée "detail.mode_detention".
+    jsonColumns:  Record<string, Record<string, unknown>>
     ecart_ids:    string[]
   }
 
@@ -88,6 +93,7 @@ export async function appliquerEcarts(
         bloc:         ecart.bloc,
         type_ecart:   ecart.type_ecart,
         columns:      {},
+        jsonColumns:  {},
         ecart_ids:    [],
       })
     }
@@ -96,7 +102,15 @@ export async function appliquerEcarts(
     const valeurRaw = (ecart.valeur_proposee as { valeur: string | null } | null)?.valeur ?? null
 
     try {
-      batch.columns[ecart.colonne_cible] = coerceValeur(valeurRaw, entry.colonne_type)
+      const valeur = coerceValeur(valeurRaw, entry.colonne_type)
+      const [colonneOuJson, sousChamp] = ecart.colonne_cible.split('.')
+
+      if (sousChamp) {
+        if (!batch.jsonColumns[colonneOuJson]) batch.jsonColumns[colonneOuJson] = {}
+        batch.jsonColumns[colonneOuJson][sousChamp] = valeur
+      } else {
+        batch.columns[colonneOuJson] = valeur
+      }
       batch.ecart_ids.push(ecart.id)
     } catch (err) {
       errors.push({
@@ -118,6 +132,32 @@ export async function appliquerEcarts(
       const table = (supabase as any).from(batch.entite_cible)
       let opError: { message: string } | null = null
       let nouvelId: string | null = null
+
+      // Fusion des sous-champs JSONB avant l'INSERT/UPDATE.
+      // Ajout (nouvelle ligne) : aucun existant à préserver, le sous-objet
+      // devient directement la valeur de la colonne JSONB.
+      // Modification (ligne existante) : lire la valeur JSONB actuelle pour
+      // ne pas écraser les sous-champs déjà renseignés par ailleurs (CRM ou
+      // précédente application d'écarts).
+      const jsonColNames = Object.keys(batch.jsonColumns)
+      if (jsonColNames.length > 0) {
+        if (batch.type_ecart === 'ajout') {
+          for (const [jsonCol, sousChamps] of Object.entries(batch.jsonColumns)) {
+            batch.columns[jsonCol] = sousChamps
+          }
+        } else {
+          const selectCols = jsonColNames.join(',')
+          const lecture = batch.entite_id
+            ? await table.select(selectCols).eq('id', batch.entite_id).maybeSingle()
+            : await table.select(selectCols).eq('client_id', clientId).maybeSingle()
+          if (lecture.error) throw new Error(lecture.error.message)
+
+          for (const jsonCol of jsonColNames) {
+            const existant = (lecture.data?.[jsonCol] ?? {}) as Record<string, unknown>
+            batch.columns[jsonCol] = { ...existant, ...batch.jsonColumns[jsonCol] }
+          }
+        }
+      }
 
       if (batch.type_ecart === 'ajout') {
         const columns: Record<string, unknown> = { ...batch.columns, client_id: clientId }

@@ -32,7 +32,9 @@ export async function readIdentite(
     supabase.from('clients').select('nom, prenom').eq('id', clientId).single(),
     supabase
       .from('famille')
-      .select('nom, prenom, date_naissance, nationalite, pays_naissance, adresse, code_postal, ville')
+      .select(
+        'nom, prenom, date_naissance, nationalite, pays_naissance, lieu_naissance, adresse, code_postal, ville, email, telephone'
+      )
       .eq('client_id', clientId)
       .maybeSingle(),
   ])
@@ -40,15 +42,19 @@ export async function readIdentite(
   if (famError) throw famError
 
   // famille.nom/prenom prend le pas sur clients.nom/prenom (plus précis ou à jour)
+  // famille est la source de vérité du questionnaire — jamais clients.email/telephone.
   return {
     nom: famille?.nom ?? client.nom,
     prenom: famille?.prenom ?? client.prenom,
     date_naissance: famille?.date_naissance ?? null,
     nationalite: famille?.nationalite ?? null,
     pays_naissance: famille?.pays_naissance ?? null,
+    lieu_naissance: famille?.lieu_naissance ?? null,
     adresse: famille?.adresse ?? null,
     code_postal: famille?.code_postal ?? null,
     ville: famille?.ville ?? null,
+    email: famille?.email ?? null,
+    telephone: famille?.telephone ?? null,
   }
 }
 
@@ -63,7 +69,7 @@ export async function readFoyer(
     supabase
       .from('famille')
       .select(
-        'situation, regime_matrimonial, conjoint_nom, conjoint_prenom, conjoint_profession, conjoint_employeur, conjoint_categorie_professionnelle, conjoint_pays_naissance'
+        'situation, regime_matrimonial, date_mariage, contrat_mariage, date_contrat_mariage, donation_dernier_vivant, regime_pacs, date_pacs, conjoint_nom, conjoint_prenom, conjoint_profession, conjoint_employeur, conjoint_categorie_professionnelle, conjoint_pays_naissance, conjoint_lieu_naissance, conjoint_email, conjoint_telephone'
       )
       .eq('client_id', clientId)
       .maybeSingle(),
@@ -85,12 +91,21 @@ export async function readFoyer(
           employeur: famille.conjoint_employeur ?? null,
           categorie_professionnelle: famille.conjoint_categorie_professionnelle ?? null,
           pays_naissance: famille.conjoint_pays_naissance ?? null,
+          lieu_naissance: famille.conjoint_lieu_naissance ?? null,
+          email: famille.conjoint_email ?? null,
+          telephone: famille.conjoint_telephone ?? null,
         }
       : null
 
   return {
     situation: famille?.situation ?? null,
     regime_matrimonial: famille?.regime_matrimonial ?? null,
+    date_mariage: famille?.date_mariage ?? null,
+    contrat_mariage: famille?.contrat_mariage ?? null,
+    date_contrat_mariage: famille?.date_contrat_mariage ?? null,
+    donation_dernier_vivant: famille?.donation_dernier_vivant ?? null,
+    regime_pacs: famille?.regime_pacs ?? null,
+    date_pacs: famille?.date_pacs ?? null,
     conjoint,
     enfants: (enfants ?? []).map((e) => ({
       id: e.id,
@@ -140,7 +155,7 @@ export async function readActifsFinanciers(
 ): Promise<SnapshotPrefillActif[]> {
   const { data, error } = await supabase
     .from('actifs_financiers')
-    .select('id, nature, libelle, montant, souscrit_par, date_souscription')
+    .select('id, nature, libelle, montant, souscrit_par, date_souscription, detail')
     .eq('client_id', clientId)
     .order('created_at', { ascending: true })
   if (error) throw error
@@ -151,6 +166,7 @@ export async function readActifsFinanciers(
     montant: a.montant ?? null,
     souscrit_par: a.souscrit_par ?? null,
     date_souscription: a.date_souscription ?? null,
+    detail: (a.detail ?? {}) as Record<string, unknown>,
   }))
 }
 
@@ -160,7 +176,7 @@ export async function readPatrimoineImmobilier(
 ): Promise<SnapshotPrefillImmobilier[]> {
   const { data, error } = await supabase
     .from('patrimoine_immobilier')
-    .select('id, nature, valeur, detenu_par, revenus_annuels')
+    .select('id, nature, valeur, detenu_par, revenus_annuels, date_acquisition, quote_part_detenue, detail')
     .eq('client_id', clientId)
     .order('created_at', { ascending: true })
   if (error) throw error
@@ -170,6 +186,9 @@ export async function readPatrimoineImmobilier(
     valeur: b.valeur ?? null,
     detenu_par: b.detenu_par ?? null,
     revenus_annuels: b.revenus_annuels ?? null,
+    date_acquisition: b.date_acquisition ?? null,
+    quote_part_detenue: b.quote_part_detenue ?? null,
+    detail: (b.detail ?? {}) as Record<string, unknown>,
   }))
 }
 
@@ -179,7 +198,7 @@ export async function readPassifs(
 ): Promise<SnapshotPrefillPassif[]> {
   const { data, error } = await supabase
     .from('passifs')
-    .select('id, nature, banque, montant, mensualite, taux')
+    .select('id, nature, banque, montant, capital_restant_du, mensualite, taux, detail')
     .eq('client_id', clientId)
     .order('created_at', { ascending: true })
   if (error) throw error
@@ -188,8 +207,10 @@ export async function readPassifs(
     nature: p.nature,
     banque: p.banque ?? null,
     montant: p.montant ?? null,
+    capital_restant_du: p.capital_restant_du ?? null,
     mensualite: p.mensualite ?? null,
     taux: p.taux ?? null,
+    detail: (p.detail ?? {}) as Record<string, unknown>,
   }))
 }
 
@@ -199,18 +220,21 @@ export async function readBudget(
 ): Promise<SnapshotPrefillBudget> {
   const { data, error } = await supabase
     .from('budget_postes')
-    .select('id, type, libelle, montant_annuel')
+    .select('id, type, libelle, montant_annuel, nature, detail')
     .eq('client_id', clientId)
     .order('libelle', { ascending: true })
   if (error) throw error
 
   const postes = data ?? []
-  const revenus = postes
-    .filter((p) => p.type === 'revenu')
-    .map((p) => ({ id: p.id, libelle: p.libelle, montant_annuel: p.montant_annuel ?? null }))
-  const charges = postes
-    .filter((p) => p.type === 'charge')
-    .map((p) => ({ id: p.id, libelle: p.libelle, montant_annuel: p.montant_annuel ?? null }))
+  const toPoste = (p: (typeof postes)[number]) => ({
+    id: p.id,
+    libelle: p.libelle,
+    montant_annuel: p.montant_annuel ?? null,
+    nature: p.nature ?? null,
+    detail: (p.detail ?? {}) as Record<string, unknown>,
+  })
+  const revenus = postes.filter((p) => p.type === 'revenu').map(toPoste)
+  const charges = postes.filter((p) => p.type === 'charge').map(toPoste)
 
   const totalRevenus = revenus.reduce((s, p) => s + (p.montant_annuel ?? 0), 0)
   const totalCharges = charges.reduce((s, p) => s + (p.montant_annuel ?? 0), 0)

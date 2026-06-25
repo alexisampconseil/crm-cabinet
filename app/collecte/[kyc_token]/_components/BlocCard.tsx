@@ -124,6 +124,10 @@ export default function BlocCard({
                 </p>
 
                 {repeatableQuestions.map(question => {
+                  // Condition résolue DANS la même instance (groupeId) — ex :
+                  // n'afficher "employeur" que si "nature"='salaire' pour cette ligne.
+                  const visible = evaluateConditions(question.conditions, formState, perimetre, groupeId)
+                  if (!visible) return null
                   const key = makeFormKey(question.code, question.portee, groupeId)
                   return (
                     <QuestionField

@@ -93,7 +93,7 @@ export default function FamillePage() {
                   <option value="separation_biens">Séparation de biens</option>
                   <option value="participation_acquets">Participation aux acquêts</option>
                   <option value="communaute_universelle">Communauté universelle</option>
-                  <option value="NA">Sans contrat (légal)</option>
+                  <option value="autre">Autre</option>
                 </select>
               </Field>
               <Field label="Date du mariage / PACS"><TextIn type="date" val={famille.date_union} onChange={setF('date_union')} /></Field>

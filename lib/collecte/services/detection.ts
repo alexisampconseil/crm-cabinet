@@ -98,11 +98,19 @@ function resolveAbsolutePath(obj: unknown, path: string): string {
 
 function resolveItemField(item: Record<string, unknown>, path: string): string {
   const field = path.slice(5)  // retire "item."
-  const val = item[field]
-  if (val == null) return ''
-  if (typeof val === 'boolean') return val ? 'true' : 'false'
-  if (Array.isArray(val)) return JSON.stringify(val)
-  return String(val)
+  // Chemin imbriqué (ex : "detail.mode_detention" pour item.detail.mode_detention) —
+  // walk complet, pas un simple accès à plat. Rétrocompatible avec les chemins
+  // à un seul niveau (ex : "libelle"), qui se résolvent en une seule itération.
+  const parts = field.split('.')
+  let cur: unknown = item
+  for (const part of parts) {
+    if (cur == null || typeof cur !== 'object') return ''
+    cur = (cur as Record<string, unknown>)[part]
+  }
+  if (cur == null) return ''
+  if (typeof cur === 'boolean') return cur ? 'true' : 'false'
+  if (Array.isArray(cur)) return JSON.stringify(cur)
+  return String(cur)
 }
 
 function getSnapshotArray(

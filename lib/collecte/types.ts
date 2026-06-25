@@ -85,8 +85,16 @@ export type QuestionnaireReponsePortee = 'client' | 'conjoint' | 'foyer'
 
 export interface QuestionnaireCondition {
   champ: string
-  operateur: '=' | '!=' | '>' | '<' | '>=' | '<='
-  valeur: string | number | boolean
+  // 'in' : valeur doit être un tableau de chaînes — vrai si la valeur actuelle
+  // appartient au tableau. Nécessaire pour conditionner un champ sur plusieurs
+  // catégories à la fois (ex : régime fiscal affiché pour tns/bic/bnc/ba/fonciers).
+  operateur: '=' | '!=' | '>' | '<' | '>=' | '<=' | 'in'
+  valeur: string | number | boolean | string[]
+  // Portée de la question référencée par `champ`. Optionnel — défaut 'client'
+  // (comportement historique v1.0/v1.1, où toutes les conditions ciblaient des
+  // questions portee='client'). Nécessaire en v1.2 pour conditionner un champ
+  // sur une question portee='foyer' (ex : date_contrat_mariage sur contrat_mariage).
+  portee?: QuestionnaireReponsePortee
 }
 
 export interface QuestionnaireQuestion {
@@ -105,8 +113,22 @@ export interface QuestionnaireQuestion {
   prefill_path?: string
   // Valeurs proposées pour les types "liste" et "multi_liste".
   // Stockées dans le JSONB de la version pour que le questionnaire soit autonome.
-  options?: string[]
+  // Deux formats coexistent :
+  //   - string[]                         : ancien format (v1.0/v1.1) — la valeur
+  //     technique sert aussi de libellé affiché (acronymes bruts type "AV", "CTO").
+  //   - QuestionnaireOption[]             : nouveau format (v1.2+) — value/label
+  //     séparés, libellé toujours explicite côté client.
+  // Chaque version de questionnaire est figée dans questionnaire_versions.structure
+  // au moment de l'ouverture de session — une session v1.1 ouverte continue de
+  // fournir l'ancien format indéfiniment. SelectField/MultiSelectField doivent
+  // accepter les deux formats sans erreur (rétrocompatibilité obligatoire).
+  options?: string[] | QuestionnaireOption[]
   conditions: QuestionnaireCondition[]
+}
+
+export interface QuestionnaireOption {
+  value: string
+  label: string
 }
 
 export interface QuestionnaireBloc {
@@ -284,9 +306,12 @@ export interface SnapshotPrefillIdentite {
   date_naissance: string | null
   nationalite: string | null
   pays_naissance: string | null
+  lieu_naissance: string | null
   adresse: string | null
   code_postal: string | null
   ville: string | null
+  email: string | null
+  telephone: string | null
 }
 
 export interface SnapshotPrefillConjoint {
@@ -296,6 +321,9 @@ export interface SnapshotPrefillConjoint {
   employeur: string | null
   categorie_professionnelle: string | null
   pays_naissance: string | null
+  lieu_naissance: string | null
+  email: string | null
+  telephone: string | null
 }
 
 export interface SnapshotPrefillEnfant {
@@ -310,6 +338,12 @@ export interface SnapshotPrefillEnfant {
 export interface SnapshotPrefillFoyer {
   situation: string | null
   regime_matrimonial: string | null
+  date_mariage: string | null
+  contrat_mariage: boolean | null
+  date_contrat_mariage: string | null
+  donation_dernier_vivant: boolean | null
+  regime_pacs: string | null
+  date_pacs: string | null
   conjoint: SnapshotPrefillConjoint | null
   enfants: SnapshotPrefillEnfant[]
 }
@@ -325,6 +359,12 @@ export interface SnapshotPrefillSituationPro {
   conjoint: SnapshotPrefillPersonnePro | null
 }
 
+// detail JSONB — démembrement (mode_detention, age_usufruitier, date_demembrement,
+// type_demembrement, lien_usufruitier), typologie physique du bien (type_bien),
+// et tout champ complémentaire conditionnel. Structure libre, non typée finement
+// ici — résolue par chemin pointé via mapping.ts (cf. application.ts/detection.ts).
+export type SnapshotPrefillDetail = Record<string, unknown>
+
 export interface SnapshotPrefillActif {
   id: string
   nature: string
@@ -332,6 +372,7 @@ export interface SnapshotPrefillActif {
   montant: number | null
   souscrit_par: string | null
   date_souscription: string | null
+  detail: SnapshotPrefillDetail
 }
 
 export interface SnapshotPrefillImmobilier {
@@ -340,6 +381,9 @@ export interface SnapshotPrefillImmobilier {
   valeur: number | null
   detenu_par: string | null
   revenus_annuels: number | null
+  date_acquisition: string | null
+  quote_part_detenue: number | null
+  detail: SnapshotPrefillDetail
 }
 
 export interface SnapshotPrefillPassif {
@@ -347,14 +391,18 @@ export interface SnapshotPrefillPassif {
   nature: string
   banque: string | null
   montant: number | null
+  capital_restant_du: number | null
   mensualite: number | null
   taux: number | null
+  detail: SnapshotPrefillDetail
 }
 
 export interface SnapshotPrefillBudgetPoste {
   id: string
   libelle: string
   montant_annuel: number | null
+  nature: string | null
+  detail: SnapshotPrefillDetail
 }
 
 export interface SnapshotPrefillBudget {

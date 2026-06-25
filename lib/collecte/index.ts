@@ -18,6 +18,7 @@ export type {
   QuestionnaireStructure,
   QuestionnaireBloc,
   QuestionnaireQuestion,
+  QuestionnaireOption,
   QuestionnaireCondition,
   // Réponses
   QuestionnaireReponseBloc,
@@ -47,6 +48,7 @@ export type {
   SnapshotPrefillFoyer,
   SnapshotPrefillPersonnePro,
   SnapshotPrefillSituationPro,
+  SnapshotPrefillDetail,
   SnapshotPrefillActif,
   SnapshotPrefillImmobilier,
   SnapshotPrefillPassif,

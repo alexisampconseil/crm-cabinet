@@ -38,10 +38,13 @@ export default function ClientHeader({ clientId: _ }: { clientId: string }) {
   const { data: { client, famille, collecteActive }, dirty, saving, saveErrors, saveAll, clearErrors } = useClient()
   const [saved, setSaved] = useState(false)
 
-  // L'email "principal" du client est saisi dans l'onglet Famille (famille.email),
-  // pas dans clients.email — les deux colonnes existent et peuvent diverger.
-  // Le bouton d'envoi doit utiliser la même source que ce que le conseiller voit.
+  // L'email/ville/téléphone "principaux" sont saisis dans l'onglet Famille
+  // (famille.email/ville/telephone), pas dans clients.* — les colonnes existent
+  // en double et peuvent diverger. famille est la source de vérité du
+  // questionnaire (cf. audit adresse) ; l'en-tête doit refléter la même donnée.
   const emailContact = famille?.email ?? client.email
+  const villeContact = famille?.ville ?? client.ville
+  const telephoneContact = famille?.telephone ?? client.telephone
 
   const handleSave = async () => {
     clearErrors()
@@ -67,9 +70,9 @@ export default function ClientHeader({ clientId: _ }: { clientId: string }) {
         <h1 style={s.name}>{client.prenom} {client.nom}</h1>
         <div style={s.meta}>
           {client.code && <span style={s.code}>{client.code}</span>}
-          {client.ville && <span style={s.metaItem}>📍 {client.ville}</span>}
-          {client.email && <span style={s.metaItem}>{client.email}</span>}
-          {client.telephone && <span style={s.metaItem}>{client.telephone}</span>}
+          {villeContact && <span style={s.metaItem}>📍 {villeContact}</span>}
+          {emailContact && <span style={s.metaItem}>{emailContact}</span>}
+          {telephoneContact && <span style={s.metaItem}>{telephoneContact}</span>}
         </div>
       </div>
 

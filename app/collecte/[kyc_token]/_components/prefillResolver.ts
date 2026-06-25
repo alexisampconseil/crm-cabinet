@@ -37,7 +37,15 @@ export function resolvePrefillItem(
   path: string
 ): string {
   const field = path.slice(5) // retire "item."
-  return serializeValue(item[field])
+  // Chemin imbriqué (ex : "detail.mode_detention") — walk complet. Rétrocompatible
+  // avec les chemins à un seul niveau (ex : "libelle").
+  const parts = field.split('.')
+  let cur: unknown = item
+  for (const part of parts) {
+    if (cur == null || typeof cur !== 'object') return ''
+    cur = (cur as Record<string, unknown>)[part]
+  }
+  return serializeValue(cur)
 }
 
 // ── Extraction du tableau source d'un bloc répétable ─────────────────────────
@@ -60,21 +68,31 @@ export function getRepeatableItems(
 // ── Évaluation des conditions d'affichage ────────────────────────────────────
 // Toutes les conditions sont évaluées en AND.
 // Champ spécial "perimetre" : compare la valeur de session.
-// Autres champs : cherchent la valeur du question_code référencé,
-//   en supposant portee='client' et groupe_instance_id=null (v1.0).
-
+// Autres champs : cherchent la valeur du question_code référencé, avec
+//   portee=cond.portee (défaut 'client', comportement historique v1.0/v1.1).
+// groupeInstanceId : pour une question répétable, transmettre le groupe_instance_id
+//   de l'instance courante — la condition se résout alors DANS la même instance
+//   (ex : afficher "employeur" si "nature"='salaire' pour CETTE ligne de revenu).
+//   null (défaut) pour les questions non-répétables (foyer/identite/situation_pro).
 export function evaluateConditions(
   conditions: QuestionnaireCondition[],
   formState: Map<string, string>,
-  perimetre: string
+  perimetre: string,
+  groupeInstanceId: string | null = null
 ): boolean {
   for (const cond of conditions) {
     let actual: string
     if (cond.champ === 'perimetre') {
       actual = perimetre
     } else {
-      actual = formState.get(makeFormKey(cond.champ, 'client', null)) ?? ''
+      actual = formState.get(makeFormKey(cond.champ, cond.portee ?? 'client', groupeInstanceId)) ?? ''
     }
+    if (cond.operateur === 'in') {
+      const liste = Array.isArray(cond.valeur) ? cond.valeur.map(String) : [String(cond.valeur)]
+      if (!liste.includes(actual)) return false
+      continue
+    }
+
     const expected = String(cond.valeur)
     const pass = evalOp(actual, cond.operateur, expected)
     if (!pass) return false
