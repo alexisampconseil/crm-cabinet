@@ -3,6 +3,10 @@
 import { useClient } from '@/lib/ClientContext'
 import type { Famille, Enfant } from '@/lib/supabase'
 import {
+  CIVILITE, SITUATION_FAMILIALE, REGIME_MATRIMONIAL, REGIME_PACS,
+  CATEGORIE_PROFESSIONNELLE, FILIATION,
+} from '@/lib/referentiel/listes'
+import {
   colors, fonts, fontSizes, fontWeights, spacing, shadows,
   letterSpacings, cardBase, inputBase, labelBase,
   buttonGhost, buttonDanger, transitions,
@@ -12,7 +16,10 @@ import {
 const EMPTY_FAMILLE: Partial<Famille> = {
   civilite: null, nom: null, prenom: null, lieu_naissance: null,
   code_postal_naissance: null, date_naissance: null, nationalite: 'Française', situation: null,
-  regime_matrimonial: null, date_union: null, adresse: null,
+  regime_matrimonial: null,
+  date_mariage: null, contrat_mariage: null, date_contrat_mariage: null, donation_dernier_vivant: null,
+  regime_pacs: null, date_pacs: null,
+  adresse: null,
   code_postal: null, ville: null, email: null, telephone: null,
   profession: null, employeur: null, categorie_professionnelle: null,
   conjoint_civilite: null, conjoint_nom: null, conjoint_prenom: null,
@@ -36,7 +43,13 @@ export default function FamillePage() {
     update('famille', { ...famille, [field]: e.target.value || null } as Famille)
   }
 
+  const setBool = (field: keyof Famille) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    update('famille', { ...famille, [field]: e.target.checked } as Famille)
+  }
+
   const avecConjoint = famille.situation ? AVEC_CONJOINT.includes(famille.situation) : false
+  const estMarie = famille.situation === 'marie'
+  const estPacse = famille.situation === 'pacse'
 
   // Enfants
   const addEnfant = () => update('enfants', [...enfants, { ...EMPTY_ENFANT, id: `new-${Date.now()}`, client_id: data.client.id }])
@@ -54,10 +67,7 @@ export default function FamillePage() {
           <Field label="Civilité">
             <select style={{ ...inputBase, cursor: 'pointer' }} value={famille.civilite ?? ''} onChange={setF('civilite')}>
               <option value="">—</option>
-              <option value="M.">M.</option>
-              <option value="Mme">Mme</option>
-              <option value="Dr">Dr</option>
-              <option value="Pr">Pr</option>
+              {CIVILITE.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </Field>
           <div />
@@ -76,27 +86,46 @@ export default function FamillePage() {
           <Field label="Situation">
             <select style={{ ...inputBase, cursor: 'pointer' }} value={famille.situation ?? ''} onChange={setF('situation')}>
               <option value="">—</option>
-              <option value="celibataire">Célibataire</option>
-              <option value="marie">Marié(e)</option>
-              <option value="pacse">Pacsé(e)</option>
-              <option value="concubinage">Concubinage</option>
-              <option value="divorce">Divorcé(e)</option>
-              <option value="veuf">Veuf / Veuve</option>
+              {SITUATION_FAMILIALE.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </Field>
-          {avecConjoint && (
+          {estMarie && (
+            <Field label="Régime matrimonial">
+              <select style={{ ...inputBase, cursor: 'pointer' }} value={famille.regime_matrimonial ?? ''} onChange={setF('regime_matrimonial')}>
+                <option value="">—</option>
+                {REGIME_MATRIMONIAL.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </Field>
+          )}
+          {estMarie && (
             <>
-              <Field label="Régime matrimonial">
-                <select style={{ ...inputBase, cursor: 'pointer' }} value={famille.regime_matrimonial ?? ''} onChange={setF('regime_matrimonial')}>
+              <Field label="Date de mariage"><TextIn type="date" val={famille.date_mariage} onChange={setF('date_mariage')} /></Field>
+              <Field label="Contrat de mariage">
+                <label style={s.checkLabel}>
+                  <input type="checkbox" checked={famille.contrat_mariage ?? false} onChange={setBool('contrat_mariage')} style={{ accentColor: colors.blue }} />
+                  <span>Un contrat de mariage a été établi</span>
+                </label>
+              </Field>
+              {famille.contrat_mariage && (
+                <Field label="Date du contrat de mariage"><TextIn type="date" val={famille.date_contrat_mariage} onChange={setF('date_contrat_mariage')} /></Field>
+              )}
+              <Field label="Donation au dernier vivant">
+                <label style={s.checkLabel}>
+                  <input type="checkbox" checked={famille.donation_dernier_vivant ?? false} onChange={setBool('donation_dernier_vivant')} style={{ accentColor: colors.blue }} />
+                  <span>Donation au dernier vivant établie</span>
+                </label>
+              </Field>
+            </>
+          )}
+          {estPacse && (
+            <>
+              <Field label="Régime du PACS">
+                <select style={{ ...inputBase, cursor: 'pointer' }} value={famille.regime_pacs ?? ''} onChange={setF('regime_pacs')}>
                   <option value="">—</option>
-                  <option value="communaute_reduite">Communauté réduite aux acquêts</option>
-                  <option value="separation_biens">Séparation de biens</option>
-                  <option value="participation_acquets">Participation aux acquêts</option>
-                  <option value="communaute_universelle">Communauté universelle</option>
-                  <option value="autre">Autre</option>
+                  {REGIME_PACS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </Field>
-              <Field label="Date du mariage / PACS"><TextIn type="date" val={famille.date_union} onChange={setF('date_union')} /></Field>
+              <Field label="Date de PACS"><TextIn type="date" val={famille.date_pacs} onChange={setF('date_pacs')} /></Field>
             </>
           )}
         </div>
@@ -121,15 +150,7 @@ export default function FamillePage() {
           <Field label="Catégorie professionnelle">
             <select style={{ ...inputBase, cursor: 'pointer' }} value={famille.categorie_professionnelle ?? ''} onChange={setF('categorie_professionnelle')}>
               <option value="">—</option>
-              <option value="salarie_prive">Salarié secteur privé</option>
-              <option value="salarie_public">Salarié secteur public</option>
-              <option value="fonctionnaire">Fonctionnaire</option>
-              <option value="independant">Indépendant</option>
-              <option value="tns">Travailleur non salarié (TNS)</option>
-              <option value="dirigeant">Dirigeant d'entreprise</option>
-              <option value="retraite">Retraité</option>
-              <option value="sans_activite">Sans activité</option>
-              <option value="autre">Autre</option>
+              {CATEGORIE_PROFESSIONNELLE.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </Field>
         </div>
@@ -142,9 +163,7 @@ export default function FamillePage() {
             <Field label="Civilité">
               <select style={{ ...inputBase, cursor: 'pointer' }} value={famille.conjoint_civilite ?? ''} onChange={setF('conjoint_civilite')}>
                 <option value="">—</option>
-                <option value="M.">M.</option>
-                <option value="Mme">Mme</option>
-                <option value="Dr">Dr</option>
+                {CIVILITE.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </Field>
             <div />
@@ -184,10 +203,7 @@ export default function FamillePage() {
                   <Td>
                     <select style={{ ...inputBase, padding: '4px 8px', fontSize: fontSizes.sm }} value={en.filiation ?? ''} onChange={setEnfant(i, 'filiation')}>
                       <option value="">—</option>
-                      <option value="commun">Commun</option>
-                      <option value="client">Client</option>
-                      <option value="conjoint">Conjoint</option>
-                      <option value="adoption">Adoption</option>
+                      {FILIATION.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                   </Td>
                   <Td>
@@ -289,5 +305,10 @@ const s = {
     background: 'none', border: 'none', cursor: 'pointer', color: colors.danger,
     fontSize: fontSizes.sm, padding: '2px 6px', transition: transitions.fast,
     fontFamily: fonts.body,
+  } as React.CSSProperties,
+  checkLabel: {
+    display: 'flex', alignItems: 'center', gap: spacing[2], cursor: 'pointer',
+    fontFamily: fonts.body, fontSize: fontSizes.sm, color: colors.text,
+    height: '38px',
   } as React.CSSProperties,
 }

@@ -78,8 +78,13 @@ export interface Famille {
   date_naissance: string | null
   nationalite: string | null
   situation: 'celibataire' | 'marie' | 'pacse' | 'concubinage' | 'divorce' | 'veuf' | null
-  regime_matrimonial: 'communaute_reduite' | 'separation_biens' | 'participation_acquets' | 'communaute_universelle' | 'NA' | null
-  date_union: string | null
+  regime_matrimonial: 'communaute_reduite' | 'separation_biens' | 'participation_acquets' | 'communaute_universelle' | 'autre' | null
+  date_mariage: string | null
+  contrat_mariage: boolean | null
+  date_contrat_mariage: string | null
+  donation_dernier_vivant: boolean | null
+  regime_pacs: 'separation_biens' | 'indivision' | null
+  date_pacs: string | null
   adresse: string | null
   code_postal: string | null
   ville: string | null
@@ -136,6 +141,8 @@ export interface ActifFinancier {
   montant: number | null
   souscrit_par: 'client' | 'conjoint' | 'commun' | null
   date_souscription: string | null
+  // detail.mode_detention / type_demembrement / age_usufruitier /
+  // date_demembrement / lien_usufruitier — cf. lib/referentiel/listes.ts.
   detail: Record<string, unknown>
   created_at: string
 }
@@ -146,9 +153,14 @@ export interface BienImmobilier {
   nature: 'RP' | 'RS' | 'Locatif' | 'LocatifNu' | 'LocatifMeuble' | 'SCI' | 'Terrain' | 'Autre'
   valeur: number | null
   detenu_par: 'client' | 'conjoint' | 'commun' | 'SCI' | null
-  mode_detention: string | null
   revenus_annuels: number | null
   fiscalite: string | null
+  date_acquisition: string | null
+  quote_part_detenue: number | null
+  // mode de détention + démembrement (type, âge usufruitier, date, lien),
+  // type de bien, régime fiscal — cf. lib/referentiel/listes.ts pour les
+  // valeurs autorisées par sous-clé. Migration 017 : plus de colonne texte
+  // libre `mode_detention` — detail.mode_detention est l'unique représentation.
   detail: Record<string, unknown>
   created_at: string
 }
@@ -162,6 +174,8 @@ export interface Passif {
   duree: number | null
   taux: number | null
   mensualite: number | null
+  capital_restant_du: number | null
+  // detail.quotite — part du crédit revenant à chaque membre du foyer (%).
   detail: Record<string, unknown>
   created_at: string
 }
@@ -172,6 +186,9 @@ export interface BudgetPoste {
   type: 'revenu' | 'charge'
   libelle: string
   montant_annuel: number | null
+  // Catégorie du revenu (cf. REV_NATURE) — uniquement pertinent pour type='revenu'.
+  nature: string | null
+  detail: Record<string, unknown>
 }
 
 export interface Fiscalite {
