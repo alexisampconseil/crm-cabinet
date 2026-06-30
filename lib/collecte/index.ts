@@ -107,6 +107,10 @@ export {
   countEcartsARevoir,
 } from './repository/ecarts'
 
+// ── Service — snapshot finalisé ──────────────────────────────────────────────
+export { creerSnapshotFinalise } from './services/snapshot'
+export type { CreerSnapshotFinaliseParams } from './services/snapshot'
+
 // ── Service — application au référentiel (Phase 7) ───────────────────────────
 export { appliquerEcarts } from './services/application'
 export type { ApplicationResult } from './services/application'

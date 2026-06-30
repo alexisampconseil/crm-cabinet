@@ -7,6 +7,7 @@ import {
   letterSpacings, cardBase, statusBadge, transitions,
   buttonGold, buttonOutline,
 } from '@/lib/design-tokens'
+import DocumentsKycSection from './_components/DocumentsKycSection'
 
 function formatEuros(n: number | null) {
   if (!n) return '—'
@@ -117,6 +118,9 @@ export default function ClientSynthesePage() {
             <InfoRow label="Dispositifs" value={(fiscalite.dispositifs as string[]).join(', ')} />
           )}
         </Section>
+
+        {/* Documents KYC archivés */}
+        <DocumentsKycSection clientId={client.id} />
 
         {/* Dossiers en cours */}
         <Section title="Dossiers en cours" href="#" compact>

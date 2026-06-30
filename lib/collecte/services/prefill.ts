@@ -19,7 +19,10 @@ import {
 export interface SnapshotChecksumInput {
   client_id:        string
   genere_le:        string
-  session_id:       string
+  // Nullable : un snapshot généré hors session (type_declencheur='manuel' ou
+  // 'bilan_annuel') a session_id=null, ce qui est représenté tel quel dans le
+  // canonical pour garantir un checksum stable et cohérent avec la DB.
+  session_id:       string | null
   snapshot:         SnapshotPrefill
   type_declencheur: string
   version_schema:   string

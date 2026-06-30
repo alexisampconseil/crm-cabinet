@@ -17,6 +17,7 @@ import {
   statusBadge,
 } from '@/lib/design-tokens'
 import QuestionnaireForm from './_components/QuestionnaireForm'
+import MiseAJourAnnuelleForm from './_components/MiseAJourAnnuelleForm'
 
 interface Props {
   params: Promise<{ kyc_token: string }>
@@ -191,6 +192,12 @@ export default async function CollectePublicPage({ params }: Props) {
   // ── Affichage du questionnaire (statut en_cours + version disponible) ─────
 
   if (session.statut === 'en_cours' && questionnaireVersion && session.snapshot_prefill) {
+    // Parcours simplifié de mise à jour annuelle pour les clients existants :
+    // affichage de la situation en lecture seule par groupe, avec question
+    // "rien n'a changé / modifier". Uniquement pour type='verification_annuelle'.
+    // Tous les autres types conservent le parcours complet (QuestionnaireForm).
+    const isVerificationAnnuelle = session.type === 'verification_annuelle'
+
     return (
       <div style={pageContainer}>
         <div style={innerContainer}>
@@ -198,16 +205,30 @@ export default async function CollectePublicPage({ params }: Props) {
           <h1 style={heading}>
             {client ? `Bienvenue ${client.prenom} ${client.nom}` : 'Votre questionnaire patrimonial'}
           </h1>
-          <p style={subtitle}>AMP CONSEIL — Référentiel client patrimonial</p>
+          <p style={subtitle}>
+            {isVerificationAnnuelle
+              ? 'AMP CONSEIL — Mise à jour annuelle de votre situation'
+              : 'AMP CONSEIL — Référentiel client patrimonial'}
+          </p>
 
-          <QuestionnaireForm
-            structure={questionnaireVersion.structure}
-            snapshot={session.snapshot_prefill}
-            perimetre={session.perimetre}
-            statut={session.statut}
-            versionLibelle={questionnaireVersion.libelle}
-            kycToken={kyc_token}
-          />
+          {isVerificationAnnuelle ? (
+            <MiseAJourAnnuelleForm
+              structure={questionnaireVersion.structure}
+              snapshot={session.snapshot_prefill}
+              perimetre={session.perimetre}
+              versionLibelle={questionnaireVersion.libelle}
+              kycToken={kyc_token}
+            />
+          ) : (
+            <QuestionnaireForm
+              structure={questionnaireVersion.structure}
+              snapshot={session.snapshot_prefill}
+              perimetre={session.perimetre}
+              statut={session.statut}
+              versionLibelle={questionnaireVersion.libelle}
+              kycToken={kyc_token}
+            />
+          )}
 
           <p style={footer}>AMP CONSEIL — 06 82 18 18 45 — contact@ampconseil.com</p>
         </div>

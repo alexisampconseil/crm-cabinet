@@ -5,6 +5,7 @@ import { creerSession, getSessionsEnRevue } from '@/lib/collecte'
 
 const CreateSchema = z.object({
   clientId: z.string().uuid('clientId doit être un UUID valide'),
+  type: z.enum(['bilan_initial', 'mise_a_jour', 'pre_conseil', 'verification_annuelle']).optional(),
   perimetre: z.enum(['client_seul', 'foyer']).optional(),
   notes_conseiller: z.string().max(2000).optional(),
 })

@@ -237,6 +237,34 @@ export const S = StyleSheet.create({
     color: C.text,
   },
 
+  // ── Pied de page réglementaire (mentions légales cabinet) ──────────────────
+  // Additif, distinct de `footer`/`footerText` ci-dessous (utilisés par les PDF
+  // de gouvernance produit) — ne pas modifier ces derniers, le bloc de
+  // mentions légales du cabinet est nettement plus long (8-10 lignes) et
+  // nécessite sa propre mise en page.
+  legalFooter: {
+    position: 'absolute',
+    bottom: 12,
+    left: 40,
+    right: 40,
+    borderTopWidth: 1,
+    borderTopColor: C.border,
+    borderTopStyle: 'solid',
+    paddingTop: 4,
+  },
+  legalFooterPageNum: {
+    fontSize: 6.5,
+    color: C.textLight,
+    textAlign: 'right',
+    marginBottom: 2,
+  },
+  legalFooterText: {
+    fontSize: 6,
+    color: C.textLight,
+    lineHeight: 1.35,
+    textAlign: 'center',
+  },
+
   // ── Pied de page ──────────────────────────────────────────────────────────
   footer: {
     position: 'absolute',

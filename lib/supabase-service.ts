@@ -6,7 +6,7 @@ import 'server-only'
 
 import { createClient } from '@supabase/supabase-js'
 
-const BUCKET = 'produits-documents'
+const DEFAULT_BUCKET = 'produits-documents'
 // Durée de validité des signed URLs générées à la demande (1 heure)
 const SIGNED_URL_TTL = 3600
 
@@ -20,13 +20,17 @@ export function createServiceSupabase() {
 // Génère une signed URL temporaire pour un fichier dans Supabase Storage.
 // À appeler dans les Server Components ou les Route Handlers.
 // Ne jamais exposer la signed URL sans vérification d'accès préalable.
+// `bucket` par défaut sur 'produits-documents' pour compatibilité avec les
+// appels existants — les nouveaux buckets (ex: 'documents-generes') doivent le
+// préciser explicitement.
 export async function getSignedDocumentUrl(
   storagePath: string,
-  expiresInSeconds = SIGNED_URL_TTL
+  expiresInSeconds = SIGNED_URL_TTL,
+  bucket = DEFAULT_BUCKET
 ): Promise<string | null> {
   const service = createServiceSupabase()
   const { data, error } = await service.storage
-    .from(BUCKET)
+    .from(bucket)
     .createSignedUrl(storagePath, expiresInSeconds)
   if (error || !data?.signedUrl) return null
   return data.signedUrl

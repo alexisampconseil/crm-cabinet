@@ -1,21 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
-import { appliquerEcarts, buildSnapshotPrefill, computeSnapshotChecksum, countEcartsARevoir } from '@/lib/collecte'
+import { appliquerEcarts, creerSnapshotFinalise, countEcartsARevoir } from '@/lib/collecte'
+import { genererEtArchiverDocument } from '@/lib/documents-generes'
 
 // POST /api/collecte/sessions/:id/appliquer-ecarts
-// Phase 7 : applique les écarts statut='accepte' au référentiel, génère le snapshot final,
-// puis archive la session.
+// Phase 7 : applique les écarts statut='accepte' au référentiel, génère le snapshot
+// final, génère et archive le document KYC (PDF), puis archive la session.
 //
 // Ordre garanti :
 //   1. Appliquer écarts → traite (idempotent : filtre applique_le IS NULL)
 //   2. Générer patrimoine_snapshot (type_declencheur = 'validation_session')
-//   3. Passer la session en 'archive' — SEULEMENT si le snapshot réussit
+//   2bis. Générer et archiver le document KYC (documents_generes) à partir de ce
+//      snapshot finalisé — jamais depuis le référentiel live. Idempotent par
+//      (snapshot_id, template_code).
+//   3. Passer la session en 'archive' — SEULEMENT si le snapshot ET le document
+//      KYC ont été générés avec succès
 //   4. Marquer clients.kyc_status = 'complet' — non bloquant, ne remet jamais
 //      en cause un archivage déjà réussi
 //
-// Si le snapshot échoue, la session reste en 'valide' et le conseiller peut relancer.
-// Aucun écart rejeté n'est touché. Aucune application au référentiel n'est faite dans d'autres phases.
+// Si le snapshot ou le document KYC échoue, la session reste en 'valide' et le
+// conseiller peut relancer. Aucun écart rejeté n'est touché. Aucune application
+// au référentiel n'est faite dans d'autres phases.
 export async function POST(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -46,19 +52,47 @@ export async function POST(
   if (!session) return NextResponse.json({ error: 'Session introuvable' }, { status: 404 })
 
   // Idempotence : session déjà archivée
+  // On rappelle genererEtArchiverDocument même ici plutôt que de se contenter
+  // de lire l'existant : appel idempotent par (snapshot_id, template_code),
+  // donc sans coût si le document existe déjà — mais cela permet de
+  // régénérer automatiquement si la ligne documents_generes a été supprimée
+  // (ex : nettoyage de données de test) sans repasser par tout le workflow.
   if (session.statut === 'archive') {
     const { data: existingSnap } = await supabaseAdmin
       .from('patrimoine_snapshots')
       .select('id')
       .eq('session_id', sessionId)
       .maybeSingle()
-    return NextResponse.json({
-      applied:     0,
-      errors:      [],
-      archived:    true,
-      snapshot_id: existingSnap?.id ?? null,
-      message:     'Session déjà archivée',
-    })
+
+    if (!existingSnap) {
+      return NextResponse.json({
+        applied: 0, errors: [], archived: true,
+        snapshot_id: null, document_id: null,
+        message: 'Session déjà archivée',
+      })
+    }
+
+    try {
+      const { document } = await genererEtArchiverDocument(
+        existingSnap.id,
+        'kyc_particulier',
+        user.id,
+        supabaseAdmin
+      )
+      return NextResponse.json({
+        applied: 0, errors: [], archived: true,
+        snapshot_id: existingSnap.id,
+        document_id: document.id,
+        message: 'Session déjà archivée',
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erreur lors de la génération du document KYC'
+      return NextResponse.json({
+        applied: 0, errors: [], archived: true,
+        snapshot_id: existingSnap.id, document_id: null,
+        document_error: message,
+      }, { status: 500 })
+    }
   }
 
   if (session.statut !== 'valide') {
@@ -96,9 +130,9 @@ export async function POST(
   }
 
   // ── 2. Générer le snapshot patrimonial final ─────────────────────────────────
-  // Idempotence : si un snapshot de validation existe déjà (relance après échec d'archivage),
-  // réutiliser son id sans ré-insérer.
-  // En cas d'échec de la génération, la session reste en 'valide' pour permettre une relance.
+  // Idempotence : si un snapshot de validation existe déjà (relance après
+  // échec d'archivage), réutiliser son id sans ré-insérer.
+  // En cas d'échec, la session reste en 'valide' pour permettre une relance.
   let snapshot_id: string | null = null
   try {
     const { data: existingSnap } = await supabaseAdmin
@@ -111,34 +145,15 @@ export async function POST(
     if (existingSnap) {
       snapshot_id = existingSnap.id
     } else {
-      const prefill   = await buildSnapshotPrefill(session.client_id as string, supabaseAdmin)
-      const genere_le = new Date().toISOString()
-      const checksum  = computeSnapshotChecksum({
-        client_id:        session.client_id as string,
-        genere_le,
-        session_id:       sessionId,
-        snapshot:         prefill,
-        type_declencheur: 'validation_session',
-        version_schema:   '1.0',
-      })
-
-      const { data: snap, error: snapError } = await supabaseAdmin
-        .from('patrimoine_snapshots')
-        .insert({
-          client_id:        session.client_id,
-          session_id:       sessionId,
-          type_declencheur: 'validation_session',
-          version_schema:   '1.0',
-          statut:           'finalise',
-          snapshot:         prefill,
-          checksum,
-          genere_par:       user.id,
-          genere_le,
-        })
-        .select('id')
-        .single()
-
-      if (snapError) throw new Error(snapError.message)
+      const snap = await creerSnapshotFinalise(
+        {
+          clientId:        session.client_id as string,
+          sessionId:       sessionId,
+          typeDeclencheur: 'validation_session',
+          userId:          user.id,
+        },
+        supabaseAdmin
+      )
       snapshot_id = snap.id
     }
   } catch (err) {
@@ -152,7 +167,32 @@ export async function POST(
     }, { status: 500 })
   }
 
-  // ── 3. Archiver la session (seulement après snapshot réussi) ────────────────
+  // ── 2bis. Générer et archiver le document KYC ────────────────────────────────
+  // À partir du snapshot finalisé ci-dessus, jamais depuis le référentiel live.
+  // Idempotent par (snapshot_id, template_code) : une relance après échec
+  // d'archivage réutilise le document déjà généré sans le regénérer.
+  let document_id: string | null = null
+  try {
+    const { document } = await genererEtArchiverDocument(
+      snapshot_id as string,
+      'kyc_particulier',
+      user.id,
+      supabaseAdmin
+    )
+    document_id = document.id
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Erreur lors de la génération du document KYC'
+    return NextResponse.json({
+      applied:        result.applied,
+      errors:         [],
+      archived:       false,
+      snapshot_id,
+      document_id:    null,
+      document_error: message,
+    }, { status: 500 })
+  }
+
+  // ── 3. Archiver la session (seulement après snapshot et document réussis) ───
   const { error: archiveError } = await supabaseAdmin
     .from('collecte_sessions')
     .update({ statut: 'archive' })
@@ -164,6 +204,7 @@ export async function POST(
       errors:        [],
       archived:      false,
       snapshot_id,
+      document_id,
       archive_error: archiveError.message,
     }, { status: 500 })
   }
@@ -185,5 +226,6 @@ export async function POST(
     errors:      [],
     archived:    true,
     snapshot_id,
+    document_id,
   })
 }

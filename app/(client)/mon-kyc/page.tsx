@@ -5,6 +5,8 @@ import {
   colors, fonts, fontSizes, fontWeights, spacing, shadows,
   letterSpacings, cardBase, statusBadge, sectionLabel,
 } from '@/lib/design-tokens'
+import { getDocumentsByClient } from '@/lib/documents-generes'
+import DownloadKycButton from './_components/DownloadKycButton'
 
 function formatDate(d: string | null) {
   if (!d) return '—'
@@ -23,10 +25,11 @@ export default async function MonKycPage() {
   const clientId = roleData.client_id
   await logAccess('client_kyc_view', `client:${clientId}`)
 
-  const [clientRes, familleRes, responsesRes] = await Promise.all([
+  const [clientRes, familleRes, responsesRes, documentsKyc] = await Promise.all([
     supabase.from('clients').select('kyc_status, kyc_submitted_at, profil').eq('id', clientId).single(),
     supabase.from('famille').select('civilite, nom, prenom, situation, profession, ville').eq('client_id', clientId).single(),
     supabase.from('kyc_responses').select('submitted_at').eq('client_id', clientId).order('submitted_at', { ascending: false }).limit(3),
+    getDocumentsByClient(clientId, supabase, 'kyc_particulier'),
   ])
 
   const client = clientRes.data
@@ -107,6 +110,24 @@ export default async function MonKycPage() {
         </div>
       )}
 
+      {/* Documents KYC archivés */}
+      {documentsKyc.length > 0 && (
+        <div style={{ ...cardBase, ...s.card }}>
+          <h2 style={s.cardTitle}>Mes documents KYC</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[3] }}>
+            {documentsKyc.map(doc => (
+              <div key={doc.id} style={s.documentRow}>
+                <div>
+                  <p style={s.documentLabel}>KYC n°{doc.numero_sequence}</p>
+                  <p style={s.documentDate}>Généré le {formatDate(doc.genere_le)}</p>
+                </div>
+                <DownloadKycButton archiveId={doc.id} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Explication RGPD */}
       <div style={s.rgpdNote}>
         <p style={{ fontFamily: fonts.body, fontSize: fontSizes.sm, color: colors.textMid, lineHeight: 1.8 }}>
@@ -176,6 +197,16 @@ const s = {
   historyDot: {
     width: '8px', height: '8px', borderRadius: '50%',
     backgroundColor: colors.gold, flexShrink: 0,
+  },
+  documentRow: {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    gap: spacing[3], padding: `${spacing[2]} 0`, borderBottom: `1px solid ${colors.border}`,
+  },
+  documentLabel: {
+    fontFamily: fonts.body, fontSize: fontSizes.sm, fontWeight: fontWeights.medium, color: colors.text,
+  },
+  documentDate: {
+    fontFamily: fonts.body, fontSize: fontSizes.xs, color: colors.textMid, marginTop: '2px',
   },
   rgpdNote: {
     backgroundColor: colors.bluePale,

@@ -11,6 +11,23 @@ export async function creerSession(
   params: CreeSessionParams,
   supabase: SupabaseClient
 ): Promise<CollecteSession> {
+  // Le parcours de mise à jour annuelle simplifié est réservé aux clients
+  // dont un premier KYC complet est déjà enregistré — pas aux prospects ni
+  // aux nouveaux clients dont le référentiel est vide.
+  if (params.type === 'verification_annuelle') {
+    const { data: client } = await supabase
+      .from('clients')
+      .select('statut, kyc_status')
+      .eq('id', params.clientId)
+      .maybeSingle()
+
+    if (!client || client.statut === 'prospect' || client.kyc_status === 'non_fait') {
+      throw new Error(
+        "Le parcours de mise à jour annuelle n'est disponible que pour les clients dont un premier KYC est déjà complété."
+      )
+    }
+  }
+
   const existante = await getSessionActive(params.clientId, supabase)
   if (existante) {
     throw new Error(
