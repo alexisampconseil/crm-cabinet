@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useCallback, useEffect, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import {
   colors, fonts, fontSizes, fontWeights, spacing,
@@ -35,7 +35,6 @@ export default function LoginPage() {
 }
 
 function LoginContent() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const nextPath = searchParams.get('next')
 
@@ -76,7 +75,7 @@ function LoginContent() {
     })
   }, [])
 
-  const redirectByRole = useCallback(async () => {
+  const redirectByRole = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setError('Session invalide. Veuillez réessayer.'); return }
 
@@ -98,14 +97,12 @@ function LoginContent() {
 
     const destination = nextPath ||
       (role === 'conseiller' ? '/dashboard' : '/tableau-de-bord')
-    // router.push() seul ne rafraîchit pas les Server Components : Next.js peut
-    // servir le rendu mis en cache de la destination généré avant la connexion
-    // (ex. la redirection vers /login subie juste avant), renvoyant l'utilisateur
-    // en boucle. router.refresh() invalide ce cache et force une relecture des
-    // cookies de session côté serveur. Cf. doc Supabase SSR App Router.
-    router.push(destination)
-    router.refresh()
-  }, [router, nextPath])
+    // Navigation dure : garantit que les cookies Supabase nouvellement posés
+    // sont envoyés dans une requête fraîche. router.push + router.refresh()
+    // a une race condition en production (cache SSR servi avant que refresh()
+    // n'invalide, proxy reçoit user=null et renvoie au login).
+    window.location.href = destination
+  }
 
   const handleCredentialsSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
