@@ -13,9 +13,6 @@ import {
 const CreateLienSchema = z.object({
   clientId: z.string().uuid('clientId doit être un UUID valide'),
   perimetre: z.enum(['client_seul', 'foyer']).optional(),
-  type: z
-    .enum(['bilan_initial', 'mise_a_jour', 'pre_conseil', 'verification_annuelle'])
-    .optional(),
   expiresInHours: z.number().int().min(1).max(720).optional().default(168),
   notes_conseiller: z.string().max(2000).optional(),
 })
@@ -49,7 +46,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: msg }, { status: 422 })
   }
 
-  const { clientId, perimetre, type, expiresInHours, notes_conseiller } = parsed.data
+  const { clientId, perimetre, expiresInHours, notes_conseiller } = parsed.data
 
   // Déclarés avant le try pour être accessibles dans le catch si une création partielle
   // a eu lieu avant l'erreur — permet d'informer le conseiller sur la récupération.
@@ -57,15 +54,23 @@ export async function POST(request: NextRequest) {
   let createdTokenId: string | undefined
 
   try {
-    // 1. Vérification client
+    // 1. Vérification client — kyc_status utilisé pour déterminer le type de session
     const { data: client, error: clientErr } = await supabaseAdmin
       .from('clients')
-      .select('id, nom, prenom')
+      .select('id, nom, prenom, kyc_status')
       .eq('id', clientId)
       .single()
     if (clientErr || !client) {
       return NextResponse.json({ error: 'Client introuvable' }, { status: 404 })
     }
+
+    // Type déterminé automatiquement — le conseiller ne choisit pas.
+    // Client avec KYC déjà validé (complet ou à renouveler) → mise à jour annuelle simplifiée.
+    // Sinon (non_fait, prospect) → bilan initial complet.
+    const sessionType: 'bilan_initial' | 'verification_annuelle' =
+      (client.kyc_status === 'complet' || client.kyc_status === 'a_renouveler')
+        ? 'verification_annuelle'
+        : 'bilan_initial'
 
     // 2. Vérification aucune session active (brouillon ou en_cours)
     const sessionExistante = await getSessionActive(clientId, supabase)
@@ -97,7 +102,7 @@ export async function POST(request: NextRequest) {
       {
         clientId,
         perimetre: perimetre ?? 'client_seul',
-        type: type ?? 'bilan_initial',
+        type: sessionType,
         canal: 'portail_client',
         notes_conseiller,
       },

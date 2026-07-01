@@ -32,13 +32,11 @@ export default function GenerateCollecteLinkButton({ clientId, kycStatus, email 
     setState('loading')
     setErrorMsg('')
     try {
-      const type = kycStatus === 'non_fait' ? 'bilan_initial' : 'mise_a_jour'
       const res = await fetch('/api/collecte/liens', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           clientId,
-          type,
           perimetre: 'client_seul',
           expiresInHours: 168,
         }),
