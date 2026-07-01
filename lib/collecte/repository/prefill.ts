@@ -29,7 +29,7 @@ export async function readIdentite(
     { data: client, error: clientError },
     { data: famille, error: famError },
   ] = await Promise.all([
-    supabase.from('clients').select('nom, prenom').eq('id', clientId).single(),
+    supabase.from('clients').select('nom, prenom, telephone, email, ville').eq('id', clientId).single(),
     supabase
       .from('famille')
       .select(
@@ -52,9 +52,9 @@ export async function readIdentite(
     lieu_naissance: famille?.lieu_naissance ?? null,
     adresse: famille?.adresse ?? null,
     code_postal: famille?.code_postal ?? null,
-    ville: famille?.ville ?? null,
-    email: famille?.email ?? null,
-    telephone: famille?.telephone ?? null,
+    ville: famille?.ville ?? client.ville ?? null,
+    email: famille?.email ?? client.email ?? null,
+    telephone: famille?.telephone ?? client.telephone ?? null,
   }
 }
 
