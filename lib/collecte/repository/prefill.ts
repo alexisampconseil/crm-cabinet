@@ -69,7 +69,7 @@ export async function readFoyer(
     supabase
       .from('famille')
       .select(
-        'situation, regime_matrimonial, date_mariage, contrat_mariage, date_contrat_mariage, donation_dernier_vivant, regime_pacs, date_pacs, conjoint_nom, conjoint_prenom, conjoint_profession, conjoint_employeur, conjoint_categorie_professionnelle, conjoint_pays_naissance, conjoint_lieu_naissance, conjoint_email, conjoint_telephone'
+        'situation, regime_matrimonial, date_mariage, contrat_mariage, date_contrat_mariage, donation_dernier_vivant, regime_pacs, date_pacs, conjoint_nom, conjoint_prenom, conjoint_date_naissance, conjoint_nationalite, conjoint_profession, conjoint_employeur, conjoint_categorie_professionnelle, conjoint_pays_naissance, conjoint_lieu_naissance, conjoint_email, conjoint_telephone'
       )
       .eq('client_id', clientId)
       .maybeSingle(),
@@ -87,6 +87,8 @@ export async function readFoyer(
       ? {
           nom: famille.conjoint_nom ?? null,
           prenom: famille.conjoint_prenom ?? null,
+          date_naissance: famille.conjoint_date_naissance ?? null,
+          nationalite: famille.conjoint_nationalite ?? null,
           profession: famille.conjoint_profession ?? null,
           employeur: famille.conjoint_employeur ?? null,
           categorie_professionnelle: famille.conjoint_categorie_professionnelle ?? null,

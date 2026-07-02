@@ -14,6 +14,8 @@ export type DocumentTemplateCode = 'kyc_particulier'
 
 export type DocumentModeSignature = 'manuscrite' | 'electronique'
 
+export type DocumentStatut = 'actif' | 'annule'
+
 export interface DocumentGenere {
   id: string
   client_id: string
@@ -34,6 +36,10 @@ export interface DocumentGenere {
   mode_signature: DocumentModeSignature
   signe_client_le: string | null
   signe_conseiller_le: string | null
+  statut: DocumentStatut
+  annule_par: string | null
+  annule_le: string | null
+  motif_annulation: string | null
   created_at: string
 }
 

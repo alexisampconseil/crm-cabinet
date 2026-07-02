@@ -81,7 +81,9 @@ function SituationFamilialeReadonly({ snapshot }: { snapshot: SnapshotPrefill })
       {conjoint && (
         <SubSection title="Conjoint(e)">
           <Row label="Nom · Prénom" value={[conjoint.prenom, conjoint.nom].filter(Boolean).join(' ')} />
-          <Row label="Né(e) à"      value={conjoint.lieu_naissance} />
+          <Row label="Né(e) le"     value={fmtDate(conjoint.date_naissance)} />
+          <Row label="À"            value={conjoint.lieu_naissance} />
+          <Row label="Nationalité"  value={conjoint.nationalite} />
           <Row label="Profession"   value={pro.conjoint?.profession ?? conjoint.profession} />
           <Row label="Catégorie"    value={translate(CATEGORIE_PROFESSIONNELLE, pro.conjoint?.categorie ?? conjoint.categorie_professionnelle)} />
           <Row label="Employeur"    value={pro.conjoint?.employeur ?? conjoint.employeur} />

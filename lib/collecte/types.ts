@@ -321,6 +321,8 @@ export interface SnapshotPrefillIdentite {
 export interface SnapshotPrefillConjoint {
   nom: string | null
   prenom: string | null
+  date_naissance: string | null
+  nationalite: string | null
   profession: string | null
   employeur: string | null
   categorie_professionnelle: string | null

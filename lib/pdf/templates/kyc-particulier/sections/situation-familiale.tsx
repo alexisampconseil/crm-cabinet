@@ -53,9 +53,11 @@ export function SituationFamilialeSection({
           <SubBand>Votre conjoint</SubBand>
           {foyer.conjoint ? (
             <KeyValueList items={[
-              { label: 'Nom',       value: foyer.conjoint.nom },
-              { label: 'Prénom',    value: foyer.conjoint.prenom },
-              { label: 'À',         value: foyer.conjoint.lieu_naissance },
+              { label: 'Nom',        value: foyer.conjoint.nom },
+              { label: 'Prénom',     value: foyer.conjoint.prenom },
+              { label: 'Né(e) le',  value: fmtDate(foyer.conjoint.date_naissance) },
+              { label: 'À',          value: foyer.conjoint.lieu_naissance },
+              { label: 'Nationalité', value: foyer.conjoint.nationalite },
               { label: 'Profession', value: situationPro.conjoint?.profession ?? foyer.conjoint.profession },
               {
                 label: 'Catégorie',

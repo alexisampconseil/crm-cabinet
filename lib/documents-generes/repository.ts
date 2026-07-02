@@ -5,6 +5,8 @@ import type {
   InsertDocumentGenereInput,
 } from './types'
 
+// Idempotence : ne considère que les documents actifs. Un document annulé libère
+// le slot et permet la régénération depuis le même snapshot.
 export async function getDocumentBySnapshotAndTemplate(
   snapshotId: string,
   templateCode: DocumentTemplateCode,
@@ -15,6 +17,7 @@ export async function getDocumentBySnapshotAndTemplate(
     .select('*')
     .eq('snapshot_id', snapshotId)
     .eq('template_code', templateCode)
+    .eq('statut', 'actif')
     .maybeSingle()
   if (error) throw error
   return data as DocumentGenere | null
@@ -79,4 +82,30 @@ export async function insertDocument(
     .single()
   if (error) throw error
   return data as DocumentGenere
+}
+
+// Annulation logique irréversible. Le trigger fn_guard_document_genere (020)
+// bloque toute modification ultérieure du document annulé, y compris la réactivation.
+// Lance une erreur si aucune ligne n'est mise à jour (document déjà annulé ou inexistant).
+export async function annulerDocument(
+  id: string,
+  annulePar: string,
+  motif: string | null,
+  supabase: SupabaseClient
+): Promise<void> {
+  const { data, error } = await supabase
+    .from('documents_generes')
+    .update({
+      statut: 'annule',
+      annule_par: annulePar,
+      annule_le: new Date().toISOString(),
+      motif_annulation: motif,
+    })
+    .eq('id', id)
+    .eq('statut', 'actif')
+    .select('id')
+  if (error) throw error
+  if (!data || data.length === 0) {
+    throw new Error('Document introuvable ou déjà annulé')
+  }
 }

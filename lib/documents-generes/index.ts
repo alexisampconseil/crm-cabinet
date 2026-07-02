@@ -5,6 +5,7 @@
 export type {
   DocumentTemplateCode,
   DocumentModeSignature,
+  DocumentStatut,
   DocumentGenere,
   InsertDocumentGenereInput,
   CabinetConfig,
@@ -18,6 +19,7 @@ export {
   getDocumentById,
   getDocumentsByClient,
   countDocumentsForClientTemplate,
+  annulerDocument,
 } from './repository'
 
 export { getCabinetConfig } from './cabinet-config'
