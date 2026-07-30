@@ -6,6 +6,7 @@ import {
   letterSpacings, cardBase, tableHeaderCell, tableCell,
   statusBadge, sectionLabel, transitions,
 } from '@/lib/design-tokens'
+import ProductionAffaires from '@/app/(conseiller)/affaires/_components/ProductionAffaires'
 
 // ---------------------------------------------------------------------------
 // Helpers d'affichage
@@ -88,6 +89,9 @@ export default async function DashboardPage() {
         </div>
         <h1 style={s.title}>Tableau de bord v2</h1>
       </div>
+
+      {/* Production Affaires */}
+      <ProductionAffaires />
 
       {/* KPI Cards */}
       <div style={s.kpiGrid}>

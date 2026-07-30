@@ -16,6 +16,7 @@ const TABS = [
   { label: 'Patrimoine',  segment: 'patrimoine' },
   { label: 'Fiscalité',   segment: 'fiscalite' },
   { label: 'Prévoyance',  segment: 'prevoyance' },
+  { label: 'Affaires',    segment: 'affaires' },
   { label: 'Messagerie',  segment: 'messagerie' },
 ]
 

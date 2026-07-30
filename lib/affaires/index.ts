@@ -4,7 +4,7 @@ export * from './types'
 export * from './errors'
 
 export {
-  requireConseiller,
+  requireConseiller, requirePeutParametrer,
 } from './services/guard'
 
 export {
@@ -23,3 +23,11 @@ export {
 export {
   getFamillesActives, getTypesActifs, getPartenairesActifs, getFrisesActives, getDonneesCreation,
 } from './repository/referentiel'
+
+export { getProductionStats, peutParametrer } from './repository/production'
+export type { ProductionStats, ProductionParTypeLigne } from './repository/production'
+
+export {
+  listFamilles, listTypes, listPartenaires, listMotifs, listFrises, getFriseDetail,
+} from './repository/parametrage'
+export { parametrage, publierFrise, archiverFrise } from './services/parametrage'

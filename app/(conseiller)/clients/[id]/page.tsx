@@ -8,6 +8,7 @@ import {
   buttonGold, buttonOutline,
 } from '@/lib/design-tokens'
 import DocumentsKycSection from './_components/DocumentsKycSection'
+import AffairesEnCoursBloc from '@/app/(conseiller)/affaires/_components/AffairesEnCoursBloc'
 
 function formatEuros(n: number | null) {
   if (!n) return '—'
@@ -121,6 +122,11 @@ export default function ClientSynthesePage() {
 
         {/* Documents KYC archivés */}
         <DocumentsKycSection clientId={client.id} />
+
+        {/* Affaires en cours */}
+        <Section title="Affaires en cours" href={`${base}/affaires`} compact>
+          <AffairesEnCoursBloc clientId={client.id} />
+        </Section>
 
         {/* Dossiers en cours */}
         <Section title="Dossiers en cours" href="#" compact>

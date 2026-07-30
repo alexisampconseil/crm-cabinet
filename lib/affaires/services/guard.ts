@@ -20,3 +20,13 @@ export async function requireConseiller(supabase: Supa): Promise<{ userId: strin
   }
   return { userId: user.id }
 }
+
+// Exige la permission de paramétrage (RPC 021). Complète la RLS des tables de
+// config par un refus applicatif clair (403).
+export async function requirePeutParametrer(supabase: Supa): Promise<void> {
+  await requireConseiller(supabase)
+  const { data, error } = await supabase.rpc('peut_parametrer_affaires')
+  if (error || data !== true) {
+    throw new AffaireError('Paramétrage réservé aux conseillers autorisés', 403)
+  }
+}

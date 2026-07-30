@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createServerSupabase } from '@/lib/supabase'
-import { requireConseiller, creerAffaire, listAffairesByClient, toHttp } from '@/lib/affaires'
+import { requireConseiller, creerAffaire, listAffairesByClient, getProductionStats, toHttp } from '@/lib/affaires'
 
 const CreateSchema = z.object({
   clientId: z.string().uuid(),
@@ -38,7 +38,18 @@ export async function GET(request: NextRequest) {
   const supabase = await createServerSupabase()
   try {
     await requireConseiller(supabase)
-    const clientId = request.nextUrl.searchParams.get('clientId')
+    const sp = request.nextUrl.searchParams
+
+    // Vue globale de production conseiller.
+    if (sp.get('production')) {
+      const anneeRaw = sp.get('annee')
+      const annee = anneeRaw ? Number(anneeRaw) : undefined
+      const familleId = sp.get('familleId') || null
+      const stats = await getProductionStats(supabase, { annee, familleId })
+      return NextResponse.json({ production: stats })
+    }
+
+    const clientId = sp.get('clientId')
     if (!clientId) return NextResponse.json({ error: 'clientId requis' }, { status: 400 })
     const affaires = await listAffairesByClient(supabase, clientId)
     return NextResponse.json({ affaires })
