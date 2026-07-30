@@ -22,7 +22,7 @@ function formatDate(d: string | null) {
 
 export default function ClientSynthesePage() {
   const { data } = useClient()
-  const { client, famille, enfants, objectifs, actifsFinanciers, biensImmobiliers, passifs, budgetPostes, fiscalite, dossiers } = data
+  const { client, famille, enfants, objectifs, actifsFinanciers, biensImmobiliers, passifs, budgetPostes, fiscalite } = data
   const base = `/clients/${client.id}`
 
   // Calculs patrimoniaux
@@ -32,8 +32,6 @@ export default function ClientSynthesePage() {
   const patrimoineNet = totalActifsFinanciers + totalImmobilier - totalPassifs
   const revenusAnnuels = budgetPostes.filter(p => p.type === 'revenu').reduce((acc, p) => acc + (p.montant_annuel ?? 0), 0)
   const chargesAnnuelles = budgetPostes.filter(p => p.type === 'charge').reduce((acc, p) => acc + (p.montant_annuel ?? 0), 0)
-
-  const dossiersEnCours = dossiers.filter(d => d.statut === 'en_cours')
 
   return (
     <div style={s.grid}>
@@ -126,27 +124,6 @@ export default function ClientSynthesePage() {
         {/* Affaires en cours */}
         <Section title="Affaires en cours" href={`${base}/affaires`} compact>
           <AffairesEnCoursBloc clientId={client.id} />
-        </Section>
-
-        {/* Dossiers en cours */}
-        <Section title="Dossiers en cours" href="#" compact>
-          {dossiersEnCours.length === 0 ? (
-            <Empty label="Aucun dossier actif" />
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[3] }}>
-              {dossiersEnCours.slice(0, 4).map(d => (
-                <div key={d.id} style={s.dossierItem}>
-                  <div>
-                    <p style={s.dossierTitre}>{d.titre}</p>
-                    <div style={s.progressBar}>
-                      <div style={{ ...s.progressFill, width: `${d.progression}%` }} />
-                    </div>
-                  </div>
-                  <span style={s.dossierPct}>{d.progression} %</span>
-                </div>
-              ))}
-            </div>
-          )}
         </Section>
 
       </div>

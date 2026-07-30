@@ -51,9 +51,8 @@ export default async function DashboardPage() {
   await logAccess('dashboard_view')
 
   // Requêtes en parallèle
-  const [clientsRes, dossiersRes, recentRes, alertesRes] = await Promise.all([
+  const [clientsRes, recentRes, alertesRes] = await Promise.all([
     supabase.from('clients').select('id, statut, encours, kyc_status'),
-    supabase.from('dossiers').select('id, statut'),
     supabase
       .from('clients')
       .select('id, nom, prenom, statut, kyc_status, encours, created_at, ville')
@@ -69,7 +68,6 @@ export default async function DashboardPage() {
   ])
 
   const clients = clientsRes.data ?? []
-  const dossiers = dossiersRes.data ?? []
   const recentClients = recentRes.data ?? []
   const alertesKyc = alertesRes.data ?? []
 
@@ -77,7 +75,6 @@ export default async function DashboardPage() {
   const totalProspects = clients.filter(c => c.statut === 'prospect').length
   const totalEncours = clients.reduce((acc, c) => acc + (c.encours ?? 0), 0)
   const kycAlertes = clients.filter(c => ['a_renouveler', 'non_fait'].includes(c.kyc_status) && c.statut === 'client').length
-  const dossiersEnCours = dossiers.filter(d => d.statut === 'en_cours').length
 
   return (
     <div>
@@ -98,7 +95,6 @@ export default async function DashboardPage() {
         <KpiCard label="Clients actifs" value={totalClients.toString()} sub={`${totalProspects} prospect${totalProspects > 1 ? 's' : ''}`} accent={colors.blue} />
         <KpiCard label="Encours total" value={formatEuros(totalEncours)} sub="Actifs sous gestion" accent={colors.gold} />
         <KpiCard label="KYC à traiter" value={kycAlertes.toString()} sub="Renouvellements + manquants" accent={kycAlertes > 0 ? colors.danger : colors.success} />
-        <KpiCard label="Dossiers en cours" value={dossiersEnCours.toString()} sub="Opérations actives" accent={colors.blueDeep} />
       </div>
 
       {/* Tableaux */}

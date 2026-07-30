@@ -14,15 +14,6 @@ interface RelanceRow {
   clients: { nom: string; prenom: string } | null
 }
 
-interface DossierRow {
-  id: string
-  client_id: string
-  titre: string
-  statut: string
-  updated_at: string
-  clients: { nom: string; prenom: string } | null
-}
-
 interface ClientAlerte {
   id: string
   nom: string
@@ -61,18 +52,12 @@ export default async function AgendaPage() {
   const supabase = await createServerSupabase()
   await logAccess('agenda_view')
 
-  const [relancesRes, dossiersRes, alertesKycRes] = await Promise.all([
+  const [relancesRes, alertesKycRes] = await Promise.all([
     supabase
       .from('relances')
       .select('*, clients(nom, prenom)')
       .order('sent_at', { ascending: false })
       .limit(30),
-    supabase
-      .from('dossiers')
-      .select('id, client_id, titre, statut, updated_at, clients(nom, prenom)')
-      .eq('statut', 'en_cours')
-      .order('updated_at', { ascending: false })
-      .limit(10),
     supabase
       .from('clients')
       .select('id, nom, prenom, email, kyc_status, derniere_relance')
@@ -83,13 +68,7 @@ export default async function AgendaPage() {
   ])
 
   const relances = (relancesRes.data ?? []) as unknown as RelanceRow[]
-  const dossiers = (dossiersRes.data ?? []) as unknown as DossierRow[]
   const alertesKyc = (alertesKycRes.data ?? []) as unknown as ClientAlerte[]
-
-  const DOSSIER_BADGE: Record<string, React.CSSProperties> = {
-    en_cours: statusBadge.info, suspendu: statusBadge.warning,
-    cloture: statusBadge.success, annule: statusBadge.neutral,
-  }
 
   return (
     <div>
@@ -101,7 +80,6 @@ export default async function AgendaPage() {
         </div>
         <div style={{ display: 'flex', gap: spacing[5] }}>
           <AgendaKpi label="Alertes KYC" value={alertesKyc.length} color={alertesKyc.length > 0 ? colors.danger : colors.success} />
-          <AgendaKpi label="Dossiers actifs" value={dossiers.length} color={colors.blue} />
           <AgendaKpi label="Relances envoyées" value={relances.length} color={colors.gold} />
         </div>
       </div>
@@ -196,28 +174,6 @@ export default async function AgendaPage() {
 
         {/* Colonne droite */}
         <div style={{ width: '300px', flexShrink: 0, display: 'flex', flexDirection: 'column' as const, gap: spacing[5] }}>
-
-          {/* Dossiers en cours */}
-          <div style={{ ...cardBase, ...s.sideCard }}>
-            <h2 style={{ ...s.cardTitle, marginBottom: spacing[4] }}>Dossiers en cours</h2>
-            {dossiers.length === 0 ? (
-              <p style={{ fontFamily: fonts.body, fontSize: fontSizes.sm, color: colors.textLight, fontStyle: 'italic' }}>Aucun dossier actif.</p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column' as const, gap: spacing[3] }}>
-                {dossiers.map(d => (
-                  <Link key={d.id} href={`/clients/${d.client_id}`} style={s.dossierLink}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontFamily: fonts.body, fontSize: fontSizes.sm, fontWeight: fontWeights.medium, color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{d.titre}</p>
-                      <p style={{ fontFamily: fonts.body, fontSize: fontSizes.xs, color: colors.textMid, marginTop: '2px' }}>
-                        {d.clients ? `${d.clients.prenom} ${d.clients.nom}` : '—'}
-                      </p>
-                    </div>
-                    <span style={DOSSIER_BADGE[d.statut] ?? statusBadge.neutral}>{d.statut}</span>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
 
           {/* Liens utiles */}
           <div style={{ ...cardBase, ...s.sideCard }}>

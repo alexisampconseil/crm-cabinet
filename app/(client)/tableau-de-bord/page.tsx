@@ -33,13 +33,11 @@ export default async function ClientTableauDeBordPage() {
   const clientId = roleData.client_id
   await logAccess('client_tableau_bord', `client:${clientId}`)
 
-  const [clientRes, actifsRes, biensRes, passifsRes, dossiersRes] = await Promise.all([
+  const [clientRes, actifsRes, biensRes, passifsRes] = await Promise.all([
     supabase.from('clients').select('*').eq('id', clientId).single(),
     supabase.from('actifs_financiers').select('nature, montant').eq('client_id', clientId),
     supabase.from('patrimoine_immobilier').select('nature, valeur').eq('client_id', clientId),
     supabase.from('passifs').select('montant').eq('client_id', clientId),
-    supabase.from('dossiers').select('id, titre, statut, progression, updated_at')
-      .eq('client_id', clientId).order('updated_at', { ascending: false }).limit(5),
   ])
 
   const client = clientRes.data
@@ -48,7 +46,6 @@ export default async function ClientTableauDeBordPage() {
   const actifs = actifsRes.data ?? []
   const biens = biensRes.data ?? []
   const passifs = passifsRes.data ?? []
-  const dossiers = dossiersRes.data ?? []
 
   const totalActifs = actifs.reduce((acc, a) => acc + (a.montant ?? 0), 0)
   const totalImmobilier = biens.reduce((acc, b) => acc + (b.valeur ?? 0), 0)
@@ -61,11 +58,6 @@ export default async function ClientTableauDeBordPage() {
   const KYC_STYLE: Record<string, React.CSSProperties> = {
     non_fait: statusBadge.neutral, en_cours: statusBadge.warning,
     complet: statusBadge.success, a_renouveler: statusBadge.danger,
-  }
-
-  const DOSSIER_STYLE: Record<string, React.CSSProperties> = {
-    en_cours: statusBadge.info, suspendu: statusBadge.warning,
-    cloture: statusBadge.success, annule: statusBadge.neutral,
   }
 
   return (
@@ -104,31 +96,6 @@ export default async function ClientTableauDeBordPage() {
       </div>
 
       <div style={s.bottom}>
-        {/* Dossiers en cours */}
-        <div style={{ ...cardBase, ...s.card, flex: 1 }}>
-          <h2 style={s.cardTitle}>Mes dossiers en cours</h2>
-          {dossiers.length === 0 ? (
-            <p style={s.empty}>Aucun dossier en cours</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[4] }}>
-              {dossiers.map(d => (
-                <div key={d.id} style={s.dossierRow}>
-                  <div style={{ flex: 1 }}>
-                    <div style={s.dossierHead}>
-                      <p style={s.dossierTitle}>{d.titre}</p>
-                      <span style={DOSSIER_STYLE[d.statut] ?? statusBadge.neutral}>{d.statut}</span>
-                    </div>
-                    <div style={s.progressBar}>
-                      <div style={{ ...s.progressFill, width: `${d.progression}%` }} />
-                    </div>
-                    <p style={s.dossierMeta}>{d.progression} % — màj {formatDate(d.updated_at)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
         {/* Liens rapides */}
         <div style={{ ...cardBase, ...s.card, width: '280px', flexShrink: 0 }}>
           <h2 style={s.cardTitle}>Accès rapide</h2>

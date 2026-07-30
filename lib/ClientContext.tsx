@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useCallback, ReactNode } from 'rea
 import type {
   Client, Famille, Enfant, Objectif, ActifFinancier,
   BienImmobilier, Passif, BudgetPoste, Fiscalite, Prevoyance,
-  ContratPrevoyance, Dossier,
+  ContratPrevoyance,
 } from './supabase'
 import type { CollecteSession } from './collecte'
 
@@ -24,7 +24,6 @@ export interface ClientContextData {
   fiscalite: Fiscalite | null
   prevoyance: Prevoyance | null
   contratsPrevoyance: ContratPrevoyance[]
-  dossiers: Dossier[]
   // Session brouillon/en_cours la plus récente, si elle existe — lecture seule,
   // jamais modifiée via update/saveAll (pas de notion de "dirty" applicable).
   collecteActive: CollecteSession | null

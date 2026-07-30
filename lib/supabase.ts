@@ -9,8 +9,6 @@ export type ClientStatut = 'prospect' | 'client' | 'inactif' | 'archive'
 export type ClientProfil = 'prudent' | 'equilibre' | 'dynamique' | 'agressif'
 export type KycStatus = 'non_fait' | 'en_cours' | 'complet' | 'a_renouveler'
 export type KycContexte = 'prospect' | 'maj_annuelle' | 'modif_situation'
-export type DossierStatut = 'en_cours' | 'suspendu' | 'cloture' | 'annule'
-export type EtapeStatut = 'pending' | 'en_cours' | 'valide' | 'bloque'
 
 // ── Gouvernance Produits ────────────────────────────────────────────────────
 
@@ -222,25 +220,6 @@ export interface ContratPrevoyance {
   montant: number | null
   detail: Record<string, unknown>
   created_at: string
-}
-
-export interface Dossier {
-  id: string
-  client_id: string
-  titre: string
-  statut: DossierStatut
-  progression: number
-  created_at: string
-  updated_at: string
-}
-
-export interface DossierEtape {
-  id: string
-  dossier_id: string
-  libelle: string
-  statut: EtapeStatut
-  date: string | null
-  ordre: number
 }
 
 export interface DocumentReglementaire {
@@ -895,46 +874,6 @@ export async function getContratsPrevoyance(clientId: string) {
     .eq('client_id', id)
   if (error) throw error
   return data as ContratPrevoyance[]
-}
-
-// ============================================================
-// CRUD — DOSSIERS
-// ============================================================
-
-export async function getDossiers(clientId: string) {
-  const id = await resolveClientId(clientId)
-  const supabase = await createServerSupabase()
-  const { data, error } = await supabase
-    .from('dossiers')
-    .select('*, dossier_etapes(*)')
-    .eq('client_id', id)
-    .order('created_at', { ascending: false })
-  if (error) throw error
-  return data as (Dossier & { dossier_etapes: DossierEtape[] })[]
-}
-
-export async function createDossier(clientId: string, input: Omit<Dossier, 'id' | 'client_id' | 'created_at' | 'updated_at'>) {
-  const id = await resolveClientId(clientId)
-  const supabase = await createServerSupabase()
-  const { data, error } = await supabase
-    .from('dossiers')
-    .insert({ ...input, client_id: id })
-    .select()
-    .single()
-  if (error) throw error
-  return data as Dossier
-}
-
-export async function updateDossier(id: string, input: Partial<Omit<Dossier, 'id' | 'client_id' | 'created_at'>>) {
-  const supabase = await createServerSupabase()
-  const { data, error } = await supabase
-    .from('dossiers')
-    .update(input)
-    .eq('id', id)
-    .select()
-    .single()
-  if (error) throw error
-  return data as Dossier
 }
 
 // ============================================================
