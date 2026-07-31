@@ -192,7 +192,7 @@ export default function AffaireDetailClient({ affaireId, clientId }: { affaireId
       {/* Modale d'étape */}
       {step && (
         <EtapeModal
-          etape={step} readonly={readonly} busy={busy} error={actionError}
+          etape={step} numero={etapes.findIndex((e) => e.id === step.id) + 1} readonly={readonly} busy={busy} error={actionError}
           taches={tachesByEtape(step.id)} docs={docsByEtape(step.id)} ctrls={ctrlByEtape(step.id)}
           blocages={blocagesByEtape(step.id)}
           onEtapeStatut={(v) => run(`/api/affaires/${affaireId}/etapes/${step.id}`, { statut: v })}
@@ -236,7 +236,7 @@ function FriseNode({ etape, index, last, current, bloque, nbChildren, onClick }:
             fontFamily: fonts.body, fontSize: '0.62rem', fontWeight: fontWeights.bold,
             backgroundColor: done ? colors.success : current ? colors.gold : colors.offWhite,
             color: (done || current) ? colors.white : colors.textMid, border: `1px solid ${done ? colors.success : current ? colors.gold : colors.border}`,
-          }}>{done ? '✓' : etape.ordre}</span>
+          }}>{done ? '✓' : index + 1}</span>
           <span style={{ fontFamily: fonts.body, fontSize: fontSizes.sm, fontWeight: fontWeights.semibold, color: colors.blueDeep, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{etape.libelle}</span>
         </div>
         <StatutBadge opts={ETAPE_STATUTS} value={etape.statut} />
@@ -251,8 +251,8 @@ function FriseNode({ etape, index, last, current, bloque, nbChildren, onClick }:
 }
 
 /* ── Modale d'étape ────────────────────────────────────────────────────────── */
-function EtapeModal({ etape, taches, docs, ctrls, blocages, readonly, busy, error, onEtapeStatut, onChild, onDeroger, onClose }: {
-  etape: Any; taches: Any[]; docs: Any[]; ctrls: Any[]; blocages: Any[]; readonly: boolean; busy: boolean; error: string | null
+function EtapeModal({ etape, numero, taches, docs, ctrls, blocages, readonly, busy, error, onEtapeStatut, onChild, onDeroger, onClose }: {
+  etape: Any; numero: number; taches: Any[]; docs: Any[]; ctrls: Any[]; blocages: Any[]; readonly: boolean; busy: boolean; error: string | null
   onEtapeStatut: (v: string) => void
   onChild: (kind: 'taches' | 'documents' | 'controles', id: string, v: string) => void
   onDeroger: (blocageId: string) => void
@@ -262,7 +262,7 @@ function EtapeModal({ etape, taches, docs, ctrls, blocages, readonly, busy, erro
     <div style={mo.backdrop} onClick={onClose}>
       <div style={mo.box} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing[3] }}>
-          <h3 style={mo.title}>{etape.ordre}. {etape.libelle}</h3>
+          <h3 style={mo.title}>{numero}. {etape.libelle}</h3>
           <button style={mo.close} onClick={onClose}>✕</button>
         </div>
 

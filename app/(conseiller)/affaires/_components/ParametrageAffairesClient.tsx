@@ -316,7 +316,7 @@ function EtapeCard({ etape, index, total, busy, taches, documents, controles, on
   return (
     <div style={{ ...cardBase, padding: spacing[3], marginBottom: spacing[2] }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: spacing[2] }}>
-        <span style={{ fontFamily: fonts.body, fontSize: fontSizes.sm, fontWeight: fontWeights.semibold, color: colors.blueDeep }}>{etape.ordre}. {etape.libelle}</span>
+        <span style={{ fontFamily: fonts.body, fontSize: fontSizes.sm, fontWeight: fontWeights.semibold, color: colors.blueDeep }}>{index + 1}. {etape.libelle}</span>
         <div style={{ display: 'flex', gap: spacing[1] }}>
           <button style={miniBtn} disabled={busy || index === 0} onClick={() => onMove(-1)} title="Monter">↑</button>
           <button style={miniBtn} disabled={busy || index === total - 1} onClick={() => onMove(1)} title="Descendre">↓</button>

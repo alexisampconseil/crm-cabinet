@@ -86,7 +86,7 @@ function MiniFrise({ etapes, currentId }: { etapes: EtapeMini[]; currentId: stri
         const current = e.id === currentId
         const done = e.statut === 'terminee'
         return (
-          <div key={e.id} title={`${e.ordre}. ${e.libelle} — ${t.label}`}
+          <div key={e.id} title={`${i + 1}. ${e.libelle} — ${t.label}`}
             style={{
               fontFamily: fonts.body, fontSize: '0.6rem', fontWeight: current ? fontWeights.bold : fontWeights.medium,
               color: current ? colors.white : done ? colors.success : t.color,
