@@ -1,26 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { z } from 'zod'
-import { createServerSupabase } from '@/lib/supabase'
-import { requirePeutParametrer, parametrage, toHttp } from '@/lib/affaires'
+import { NextResponse } from 'next/server'
 
-const Schema = z.object({
-  code: z.string().min(1).max(50),
-  libelle: z.string().min(1).max(150),
-  ordre: z.number().int().nonnegative().optional(),
-  actif: z.boolean().optional(),
-  necessite_commentaire: z.boolean().optional(),
-})
+// Motifs d'archivage : liste système prédéfinie, lecture seule. Écritures
+// désactivées (aucune création depuis l'interface).
+const MESSAGE = 'Les motifs d’archivage sont une liste système du CRM et ne peuvent pas être créés ni modifiés depuis l’interface.'
 
-export async function POST(request: NextRequest) {
-  const supabase = await createServerSupabase()
-  try {
-    await requirePeutParametrer(supabase)
-    const parsed = Schema.safeParse(await request.json().catch(() => null))
-    if (!parsed.success) return NextResponse.json({ error: 'Corps invalide' }, { status: 400 })
-    const row = await parametrage.createMotif(supabase, parsed.data)
-    return NextResponse.json(row, { status: 201 })
-  } catch (err) {
-    const { error, status } = toHttp(err)
-    return NextResponse.json({ error }, { status })
-  }
+export function POST() {
+  return NextResponse.json({ error: MESSAGE }, { status: 403 })
 }

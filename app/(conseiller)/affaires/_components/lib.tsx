@@ -29,6 +29,53 @@ export function Badge({ label, style }: { label: string; style?: React.CSSProper
   return <span style={{ ...statusBadge.neutral, ...style }}>{label}</span>
 }
 
+// ── Statuts : libellés compréhensibles + tons sobres (palette CRM) ────────────
+type Tone = 'todo' | 'current' | 'done' | 'skip' | 'ok' | 'ko' | 'derog'
+const TONE_STYLE: Record<Tone, React.CSSProperties> = {
+  todo: statusBadge.neutral, current: statusBadge.info, done: statusBadge.success,
+  skip: statusBadge.neutral, ok: statusBadge.success, ko: statusBadge.danger, derog: statusBadge.warning,
+}
+export interface StatutOpt { value: string; label: string; tone: Tone }
+
+export const ETAPE_STATUTS: StatutOpt[] = [
+  { value: 'a_faire', label: 'Non réalisé', tone: 'todo' },
+  { value: 'en_cours', label: 'En cours', tone: 'current' },
+  { value: 'terminee', label: 'Réalisé', tone: 'done' },
+  { value: 'ignoree', label: 'Ignoré', tone: 'skip' },
+]
+export const TACHE_STATUTS = ETAPE_STATUTS
+export const DOC_STATUTS: StatutOpt[] = [
+  { value: 'attendu', label: 'Attendu', tone: 'todo' },
+  { value: 'depose', label: 'Déposé', tone: 'current' },
+  { value: 'valide', label: 'Validé', tone: 'ok' },
+  { value: 'refuse', label: 'Refusé', tone: 'ko' },
+  { value: 'non_requis', label: 'Non requis', tone: 'skip' },
+]
+export const CTRL_STATUTS: StatutOpt[] = [
+  { value: 'a_controler', label: 'À contrôler', tone: 'todo' },
+  { value: 'conforme', label: 'Conforme', tone: 'ok' },
+  { value: 'non_conforme', label: 'Non conforme', tone: 'ko' },
+  { value: 'deroge', label: 'Dérogé', tone: 'derog' },
+]
+export function statutMeta(opts: StatutOpt[], value: string): { label: string; style: React.CSSProperties } {
+  const o = opts.find((x) => x.value === value)
+  return o ? { label: o.label, style: TONE_STYLE[o.tone] } : { label: value, style: statusBadge.neutral }
+}
+export function StatutBadge({ opts, value }: { opts: StatutOpt[]; value: string }) {
+  const { label, style } = statutMeta(opts, value)
+  return <span style={style}>{label}</span>
+}
+
+// Ton d'une étape pour la frise (couleurs de remplissage, palette CRM sobre).
+export function etapeTone(statut: string): { color: string; bg: string; label: string } {
+  switch (statut) {
+    case 'terminee': return { color: colors.success, bg: colors.successBg, label: 'Réalisé' }
+    case 'en_cours': return { color: colors.blue, bg: colors.bluePale, label: 'En cours' }
+    case 'ignoree': return { color: colors.textLight, bg: colors.offWhite, label: 'Ignoré' }
+    default: return { color: colors.textLight, bg: colors.white, label: 'Non réalisé' }
+  }
+}
+
 // ── Appels API + gestion du conflit 409 ──────────────────────────────────────
 export class ApiError extends Error {
   status: number
@@ -97,6 +144,97 @@ export function ConfirmModal(props: {
       </div>
     </div>
   )
+}
+
+// ── Progression d'une frise (part d'étapes réalisées / ignorées) ─────────────
+export function progressionEtapes(etapes: { statut: string }[]): number {
+  if (!etapes.length) return 0
+  const done = etapes.filter((e) => e.statut === 'terminee' || e.statut === 'ignoree').length
+  return Math.round((100 * done) / etapes.length)
+}
+
+// ── Frais : deux champs liés € ⇄ % (base = montant de l'affaire) ──────────────
+// La valeur métier enregistrée reste `frais` en euros ; le pourcentage est
+// purement calculé (frais / montant × 100), sans colonne en base.
+function parseNum(s: string): number | null {
+  const t = s.trim()
+  if (t === '') return null
+  const n = Number(t.replace(',', '.'))
+  return Number.isFinite(n) ? n : null
+}
+const round2 = (n: number) => Math.round(n * 100) / 100
+const fmt2 = (n: number) => round2(n).toFixed(2)
+
+export function FraisFields(props: {
+  montant: number | null
+  initialEuros: number | null
+  onEurosChange: (euros: number | null) => void
+  disabled?: boolean
+}) {
+  const { montant, initialEuros, onEurosChange, disabled } = props
+  const hasBase = typeof montant === 'number' && montant > 0
+  const [euros, setEuros] = React.useState(initialEuros != null ? String(initialEuros) : '')
+  const [pct, setPct] = React.useState(
+    initialEuros != null && hasBase ? fmt2((100 * initialEuros) / (montant as number)) : ''
+  )
+  const lastEdited = React.useRef<'euros' | 'pct'>('euros')
+
+  // Quand le montant change : garder comme référence le dernier champ modifié,
+  // recalculer l'autre ; sans base valable, le pourcentage reste vide.
+  React.useEffect(() => {
+    if (!hasBase) { setPct(''); return }
+    const base = montant as number
+    if (lastEdited.current === 'euros') {
+      const e = parseNum(euros)
+      setPct(e == null ? '' : fmt2((100 * e) / base))
+    } else {
+      const p = parseNum(pct)
+      const e = p == null ? null : round2((base * p) / 100)
+      setEuros(e == null ? '' : String(e))
+      onEurosChange(e)
+    }
+    // Recalcul volontairement déclenché par le seul changement de montant.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [montant])
+
+  const onEuros = (v: string) => {
+    lastEdited.current = 'euros'
+    setEuros(v)
+    const e = parseNum(v)
+    onEurosChange(e)
+    setPct(!hasBase || e == null ? '' : fmt2((100 * e) / (montant as number)))
+  }
+  const onPct = (v: string) => {
+    lastEdited.current = 'pct'
+    setPct(v)
+    const p = parseNum(v)
+    if (!hasBase) return
+    if (p == null) { setEuros(''); onEurosChange(null); return }
+    const e = round2(((montant as number) * p) / 100)
+    setEuros(String(e)); onEurosChange(e)
+  }
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing[4] }}>
+      <div>
+        <label style={fx.label}>Frais (€)</label>
+        <input style={fx.input} type="number" inputMode="decimal" value={euros} disabled={disabled}
+          onChange={(e) => onEuros(e.target.value)} placeholder="0" />
+      </div>
+      <div>
+        <label style={fx.label}>Frais (%)</label>
+        <input style={{ ...fx.input, ...(hasBase ? {} : fx.disabled) }} type="number" inputMode="decimal"
+          value={pct} disabled={disabled || !hasBase} onChange={(e) => onPct(e.target.value)}
+          placeholder={hasBase ? '0,00' : 'Montant requis'} />
+      </div>
+    </div>
+  )
+}
+
+const fx = {
+  label: { fontFamily: fonts.body, fontSize: fontSizes.xs, fontWeight: fontWeights.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: colors.textMid, display: 'block', marginBottom: spacing[1] } as React.CSSProperties,
+  input: { fontFamily: fonts.body, fontSize: fontSizes.base, color: colors.text, backgroundColor: colors.white, border: `1px solid ${colors.border}`, padding: `${spacing[2]} ${spacing[3]}`, outline: 'none', width: '100%' } as React.CSSProperties,
+  disabled: { backgroundColor: colors.offWhite, color: colors.textLight } as React.CSSProperties,
 }
 
 const ov = {

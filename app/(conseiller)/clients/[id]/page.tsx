@@ -48,6 +48,11 @@ export default function ClientSynthesePage() {
           </div>
         </Section>
 
+        {/* Affaires en cours — pleine largeur, frise chevrons compacte */}
+        <Section title="Affaires en cours" href={`${base}/affaires`} linkLabel="Ouvrir →">
+          <AffairesEnCoursBloc clientId={client.id} />
+        </Section>
+
         {/* Profil & objectifs */}
         <Section title="Objectifs patrimoniaux" href={`${base}/objectifs`}>
           {objectifs.length === 0 ? (
@@ -121,11 +126,6 @@ export default function ClientSynthesePage() {
         {/* Documents KYC archivés */}
         <DocumentsKycSection clientId={client.id} />
 
-        {/* Affaires en cours */}
-        <Section title="Affaires en cours" href={`${base}/affaires`} compact>
-          <AffairesEnCoursBloc clientId={client.id} />
-        </Section>
-
       </div>
     </div>
   )
@@ -135,12 +135,12 @@ export default function ClientSynthesePage() {
 // Sous-composants
 // ---------------------------------------------------------------------------
 
-function Section({ title, href, children, compact }: { title: string; href: string; children: React.ReactNode; compact?: boolean }) {
+function Section({ title, href, children, compact, linkLabel }: { title: string; href: string; children: React.ReactNode; compact?: boolean; linkLabel?: string }) {
   return (
     <div style={{ ...cardBase, ...s.section, padding: compact ? spacing[4] : spacing[5] }}>
       <div style={s.sectionHead}>
         <h3 style={s.sectionTitle}>{title}</h3>
-        <Link href={href} style={s.sectionLink}>Modifier →</Link>
+        <Link href={href} style={s.sectionLink}>{linkLabel ?? 'Modifier →'}</Link>
       </div>
       {children}
     </div>

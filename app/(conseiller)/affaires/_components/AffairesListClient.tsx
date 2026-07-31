@@ -77,7 +77,7 @@ export default function AffairesListClient({ clientId }: { clientId: string }) {
               {filtered.map((a) => (
                 <tr key={a.id} style={{ cursor: 'pointer' }}>
                   <td style={tableCell}>
-                    <Link href={`/affaires/${a.id}`} style={{ color: colors.blue, textDecoration: 'none', fontWeight: fontWeights.medium }}>{a.libelle}</Link>
+                    <Link href={`/clients/${clientId}/affaires?affaire=${a.id}`} style={{ color: colors.blue, textDecoration: 'none', fontWeight: fontWeights.medium }}>{a.libelle}</Link>
                   </td>
                   <td style={tableCell}>{nom(ref.familles, a.famille_id)}</td>
                   <td style={tableCell}>{nom(ref.types, a.type_id)}</td>

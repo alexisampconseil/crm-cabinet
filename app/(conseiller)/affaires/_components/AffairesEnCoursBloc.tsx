@@ -1,14 +1,24 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { colors, fonts, fontSizes, fontWeights, spacing, radii, cardBase, statusBadge } from '@/lib/design-tokens'
-import { api, StateMsg } from './lib'
+import { api, euros, StateMsg, etapeTone, progressionEtapes } from './lib'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-interface Compact { id: string; libelle: string; type: string; progression: number; etape: string | null; bloque: boolean }
+interface EtapeMini { id: string; ordre: number; libelle: string; statut: string }
+interface Compact {
+  id: string; libelle: string; type: string; montant: number | null
+  progression: number; etapes: EtapeMini[]; currentId: string | null; bloque: boolean
+}
+
+function abbrev(label: string, max = 16): string {
+  const s = (label ?? '').trim()
+  return s.length <= max ? s : `${s.slice(0, max - 1)}…`
+}
 
 export default function AffairesEnCoursBloc({ clientId }: { clientId: string }) {
+  const router = useRouter()
   const [items, setItems] = useState<Compact[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -24,17 +34,20 @@ export default function AffairesEnCoursBloc({ clientId }: { clientId: string }) 
         const details = await Promise.all(enCours.map((x) => api<any>(`/api/affaires/${x.id}`).catch(() => null)))
         const compact: Compact[] = enCours.map((x, i) => {
           const det = details[i]
-          const etapes: any[] = det?.etapes ?? []
-          const done = etapes.filter((e) => e.statut === 'terminee' || e.statut === 'ignoree').length
-          const prog = etapes.length ? Math.round((100 * done) / etapes.length) : 0
+          const etapes: EtapeMini[] = (det?.etapes ?? []).map((e: any) => ({ id: e.id, ordre: e.ordre, libelle: e.libelle, statut: e.statut }))
           const courante = etapes.find((e) => e.statut === 'en_cours') ?? etapes.find((e) => e.statut === 'a_faire')
           const bloque = (det?.blocages ?? []).some((b: any) => b.actif && !b.deroge)
-          return { id: x.id, libelle: x.libelle, type: typeLabel.get(x.type_id) ?? '—', progression: prog, etape: courante?.libelle ?? null, bloque }
+          return {
+            id: x.id, libelle: x.libelle, type: typeLabel.get(x.type_id) ?? '—', montant: x.montant,
+            progression: progressionEtapes(etapes), etapes, currentId: courante?.id ?? null, bloque,
+          }
         })
         setItems(compact)
       } catch (e) { setError(e instanceof Error ? e.message : 'Erreur') }
     })()
   }, [clientId])
+
+  const open = (id: string) => router.push(`/clients/${clientId}/affaires?affaire=${id}`)
 
   if (error) return <StateMsg kind="error">{error}</StateMsg>
   if (!items) return <StateMsg kind="loading">Chargement des affaires…</StateMsg>
@@ -43,20 +56,50 @@ export default function AffairesEnCoursBloc({ clientId }: { clientId: string }) 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[3] }}>
       {items.map((it) => (
-        <Link key={it.id} href={`/affaires/${it.id}`} style={{ ...cardBase, padding: spacing[4], textDecoration: 'none', display: 'block' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: spacing[3] }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontFamily: fonts.body, fontWeight: fontWeights.semibold, color: colors.blueDeep, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.libelle}</div>
-              <div style={{ fontFamily: fonts.body, fontSize: fontSizes.xs, color: colors.textMid }}>{it.type}{it.etape ? ` · ${it.etape}` : ''}</div>
+        <div key={it.id} onClick={() => open(it.id)} role="button" tabIndex={0}
+          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && open(it.id)}
+          style={{ ...cardBase, padding: spacing[4], cursor: 'pointer', display: 'flex', gap: spacing[5], alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Infos à gauche */}
+          <div style={{ minWidth: 200, flex: '1 1 220px' }}>
+            <div style={{ fontFamily: fonts.body, fontWeight: fontWeights.semibold, color: colors.blueDeep }}>{it.libelle}</div>
+            <div style={{ fontFamily: fonts.body, fontSize: fontSizes.xs, color: colors.textMid, marginTop: 2 }}>
+              {it.type}{it.montant != null ? ` · ${euros(it.montant)}` : ''} · {it.progression}%
             </div>
-            {it.bloque && <span style={statusBadge.danger}>Bloquée</span>}
+            {it.bloque && <span style={{ ...statusBadge.danger, marginTop: spacing[2], display: 'inline-block' }}>Bloquée</span>}
           </div>
-          <div style={{ marginTop: spacing[2], height: 6, backgroundColor: colors.offWhite, borderRadius: radii.full, overflow: 'hidden' }}>
-            <div style={{ width: `${it.progression}%`, height: '100%', backgroundColor: colors.gold }} />
+          {/* Frise chevrons à droite */}
+          <div style={{ flex: '2 1 320px', minWidth: 0 }}>
+            <MiniFrise etapes={it.etapes} currentId={it.currentId} />
           </div>
-          <div style={{ fontFamily: fonts.body, fontSize: fontSizes.xs, color: colors.textLight, marginTop: 2 }}>{it.progression}%</div>
-        </Link>
+        </div>
       ))}
+    </div>
+  )
+}
+
+function MiniFrise({ etapes, currentId }: { etapes: EtapeMini[]; currentId: string | null }) {
+  if (etapes.length === 0) return <span style={{ fontFamily: fonts.body, fontSize: fontSizes.xs, color: colors.textLight, fontStyle: 'italic' }}>Aucune étape</span>
+  return (
+    <div style={{ display: 'flex', overflowX: 'auto', paddingBottom: 2 }}>
+      {etapes.map((e, i) => {
+        const t = etapeTone(e.statut)
+        const current = e.id === currentId
+        const done = e.statut === 'terminee'
+        return (
+          <div key={e.id} title={`${e.ordre}. ${e.libelle} — ${t.label}`}
+            style={{
+              fontFamily: fonts.body, fontSize: '0.6rem', fontWeight: current ? fontWeights.bold : fontWeights.medium,
+              color: current ? colors.white : done ? colors.success : t.color,
+              backgroundColor: current ? colors.gold : done ? colors.successBg : colors.offWhite,
+              border: `1px solid ${current ? colors.gold : done ? colors.successBorder : colors.border}`,
+              padding: '4px 12px 4px 16px', marginLeft: i === 0 ? 0 : -8, whiteSpace: 'nowrap', flexShrink: 0,
+              clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 0 100%, 8px 50%)',
+              ...(i === 0 ? { clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 0 100%)', paddingLeft: 12, borderRadius: `${radii.sm} 0 0 ${radii.sm}` } : {}),
+            }}>
+            {done ? '✓ ' : ''}{abbrev(e.libelle)}
+          </div>
+        )
+      })}
     </div>
   )
 }

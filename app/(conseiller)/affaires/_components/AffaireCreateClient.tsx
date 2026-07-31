@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { colors, fonts, fontSizes, fontWeights, spacing, cardBase, inputBase, labelBase, buttonGold } from '@/lib/design-tokens'
-import { api, StateMsg } from './lib'
+import { api, StateMsg, FraisFields } from './lib'
 
 interface Famille { id: string; libelle: string }
 interface Type { id: string; famille_id: string; libelle: string }
@@ -20,7 +20,7 @@ export default function AffaireCreateClient({ clientId }: { clientId: string }) 
   const [typeId, setTypeId] = useState('')
   const [libelle, setLibelle] = useState('')
   const [montant, setMontant] = useState('')
-  const [frais, setFrais] = useState('')
+  const [frais, setFrais] = useState<number | null>(null)
   const [revenu, setRevenu] = useState('')
   const [produitId, setProduitId] = useState('')
   const [partenaireId, setPartenaireId] = useState('')
@@ -44,11 +44,11 @@ export default function AffaireCreateClient({ clientId }: { clientId: string }) 
         method: 'POST',
         body: JSON.stringify({
           clientId, familleId, typeId, libelle,
-          montant: num(montant), frais: num(frais), revenuPrevisionnel: num(revenu),
+          montant: num(montant), frais, revenuPrevisionnel: num(revenu),
           produitId: produitId || null, partenaireId: partenaireId || null,
         }),
       })
-      router.push(`/affaires/${res.affaire_id}`)
+      router.push(`/clients/${clientId}/affaires?affaire=${res.affaire_id}`)
     } catch (e) { setError(e instanceof Error ? e.message : 'Erreur'); setSaving(false) }
   }
 
@@ -84,9 +84,12 @@ export default function AffaireCreateClient({ clientId }: { clientId: string }) 
         <input style={inputBase} value={libelle} onChange={(e) => setLibelle(e.target.value)} placeholder="Ex : Versement ponctuel 50 000 €" />
       </div>
 
-      <div style={grid}>
-        <div><label style={labelBase}>Montant (€)</label><input style={inputBase} type="number" value={montant} onChange={(e) => setMontant(e.target.value)} /></div>
-        <div><label style={labelBase}>Frais (€)</label><input style={inputBase} type="number" value={frais} onChange={(e) => setFrais(e.target.value)} /></div>
+      <div style={{ marginTop: spacing[4] }}>
+        <label style={labelBase}>Montant (€)</label>
+        <input style={inputBase} type="number" value={montant} onChange={(e) => setMontant(e.target.value)} />
+      </div>
+      <div style={{ marginTop: spacing[4] }}>
+        <FraisFields montant={num(montant)} initialEuros={frais} onEurosChange={setFrais} />
       </div>
       <div style={grid}>
         <div><label style={labelBase}>Revenu prévisionnel (€)</label><input style={inputBase} type="number" value={revenu} onChange={(e) => setRevenu(e.target.value)} /></div>

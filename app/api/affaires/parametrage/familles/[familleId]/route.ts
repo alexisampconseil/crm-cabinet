@@ -1,25 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { z } from 'zod'
-import { createServerSupabase } from '@/lib/supabase'
-import { requirePeutParametrer, parametrage, toHttp } from '@/lib/affaires'
+import { NextResponse } from 'next/server'
 
-const Schema = z.object({
-  libelle: z.string().min(1).max(150).optional(),
-  ordre: z.number().int().nonnegative().optional(),
-  actif: z.boolean().optional(),
-})
+// Familles réglementaires : données système, lecture seule (aucune modification
+// ni désactivation depuis l'interface).
+const MESSAGE = 'Les familles réglementaires sont des données système du CRM et ne peuvent pas être modifiées depuis l’interface.'
 
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ familleId: string }> }) {
-  const { familleId } = await params
-  const supabase = await createServerSupabase()
-  try {
-    await requirePeutParametrer(supabase)
-    const parsed = Schema.safeParse(await request.json().catch(() => null))
-    if (!parsed.success) return NextResponse.json({ error: 'Corps invalide' }, { status: 400 })
-    const row = await parametrage.updateFamille(supabase, familleId, parsed.data)
-    return NextResponse.json(row)
-  } catch (err) {
-    const { error, status } = toHttp(err)
-    return NextResponse.json({ error }, { status })
-  }
+export function PATCH() {
+  return NextResponse.json({ error: MESSAGE }, { status: 403 })
 }

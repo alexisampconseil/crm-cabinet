@@ -31,3 +31,4 @@ export {
   listFamilles, listTypes, listPartenaires, listMotifs, listFrises, getFriseDetail,
 } from './repository/parametrage'
 export { parametrage, publierFrise, archiverFrise } from './services/parametrage'
+export { slugCode, uniqueCode, nextOrdre, nextVersionLabel } from './services/codegen'
