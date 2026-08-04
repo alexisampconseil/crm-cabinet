@@ -63,7 +63,16 @@ function statutMutation(fn: string, idParam: string) {
       [idParam]: i.elementId, p_statut: i.statut,
     })
 }
-export const modifierEtape = statutMutation('fn_affaire_etape_statut', 'p_etape_id')
+// L'étape accepte en plus une date effective optionnelle (p_date, format 'YYYY-MM-DD').
+export function modifierEtape(
+  supabase: Supa,
+  i: { affaireId: string; versionAttendue: number; elementId: string; statut: string; date?: string | null }
+): Promise<RpcAffaireResult> {
+  return rpc(supabase, 'fn_affaire_etape_statut', {
+    p_affaire_id: i.affaireId, p_version_attendue: i.versionAttendue,
+    p_etape_id: i.elementId, p_statut: i.statut, p_date: i.date ?? null,
+  })
+}
 export const modifierTache = statutMutation('fn_affaire_tache_statut', 'p_tache_id')
 export const modifierDocument = statutMutation('fn_affaire_document_statut', 'p_document_id')
 export const modifierControle = statutMutation('fn_affaire_controle_statut', 'p_controle_id')

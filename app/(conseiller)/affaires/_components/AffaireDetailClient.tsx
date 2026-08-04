@@ -7,7 +7,7 @@ import {
   buttonGold, buttonOutline, statusBadge,
 } from '@/lib/design-tokens'
 import {
-  api, isConflict, euros, dateFr, AFFAIRE_STATUT_LABEL, AFFAIRE_STATUT_STYLE, CIBLE_LABEL,
+  api, isConflict, euros, dateFr, dateFrOnly, dateOnly, todayLocal, AFFAIRE_STATUT_LABEL, AFFAIRE_STATUT_STYLE, CIBLE_LABEL,
   StateMsg, ConfirmModal, FraisFields,
   ETAPE_STATUTS, TACHE_STATUTS, DOC_STATUTS, CTRL_STATUTS, StatutBadge, statutMeta, etapeTone,
   type StatutOpt,
@@ -192,10 +192,11 @@ export default function AffaireDetailClient({ affaireId, clientId }: { affaireId
       {/* Modale d'étape */}
       {step && (
         <EtapeModal
+          key={`${step.id}:${step.statut}:${step.date_debut ?? ''}:${step.date_fin ?? ''}`}
           etape={step} numero={etapes.findIndex((e) => e.id === step.id) + 1} readonly={readonly} busy={busy} error={actionError}
           taches={tachesByEtape(step.id)} docs={docsByEtape(step.id)} ctrls={ctrlByEtape(step.id)}
           blocages={blocagesByEtape(step.id)}
-          onEtapeStatut={(v) => run(`/api/affaires/${affaireId}/etapes/${step.id}`, { statut: v })}
+          onApply={(statut, date) => run(`/api/affaires/${affaireId}/etapes/${step.id}`, { statut, date })}
           onChild={(kind, id, v) => run(`/api/affaires/${affaireId}/${kind}/${id}`, { statut: v })}
           onDeroger={(bId) => setModal(`deroger:${bId}`)}
           onClose={() => { setStepId(null); setActionError(null) }} />
@@ -241,7 +242,7 @@ function FriseNode({ etape, index, last, current, bloque, nbChildren, onClick }:
         </div>
         <StatutBadge opts={ETAPE_STATUTS} value={etape.statut} />
         <div style={{ fontFamily: fonts.body, fontSize: '0.6rem', color: colors.textLight, display: 'flex', justifyContent: 'space-between', gap: spacing[2] }}>
-          <span>{date ? dateFr(date) : '—'}</span>
+          <span>{date ? dateFrOnly(date) : '—'}</span>
           <span>{nbChildren > 0 ? `${nbChildren} élém.` : ''}{bloque ? ' ⚠' : ''}</span>
         </div>
       </button>
@@ -251,13 +252,26 @@ function FriseNode({ etape, index, last, current, bloque, nbChildren, onClick }:
 }
 
 /* ── Modale d'étape ────────────────────────────────────────────────────────── */
-function EtapeModal({ etape, numero, taches, docs, ctrls, blocages, readonly, busy, error, onEtapeStatut, onChild, onDeroger, onClose }: {
+function EtapeModal({ etape, numero, taches, docs, ctrls, blocages, readonly, busy, error, onApply, onChild, onDeroger, onClose }: {
   etape: Any; numero: number; taches: Any[]; docs: Any[]; ctrls: Any[]; blocages: Any[]; readonly: boolean; busy: boolean; error: string | null
-  onEtapeStatut: (v: string) => void
+  onApply: (statut: string, date: string | null) => void
   onChild: (kind: 'taches' | 'documents' | 'controles', id: string, v: string) => void
   onDeroger: (blocageId: string) => void
   onClose: () => void
 }) {
+  const relevantDate = (s: string) => (s === 'terminee' ? etape.date_fin : s === 'en_cours' ? etape.date_debut : null)
+  const [statut, setStatut] = useState<string>(etape.statut)
+  const [dateEff, setDateEff] = useState<string>(dateOnly(relevantDate(etape.statut)))
+  const showDate = statut === 'en_cours' || statut === 'terminee'
+  const onStatut = (v: string) => {
+    setStatut(v)
+    if (v === 'en_cours' || v === 'terminee') {
+      const existing = dateOnly(relevantDate(v))
+      setDateEff(existing || todayLocal()) // proposer aujourd'hui si aucune date
+    } else setDateEff('')
+  }
+  const dirty = statut !== etape.statut || (showDate && dateEff !== dateOnly(relevantDate(statut)))
+
   return (
     <div style={mo.backdrop} onClick={onClose}>
       <div style={mo.box} onClick={(e) => e.stopPropagation()}>
@@ -266,12 +280,26 @@ function EtapeModal({ etape, numero, taches, docs, ctrls, blocages, readonly, bu
           <button style={mo.close} onClick={onClose}>✕</button>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3], flexWrap: 'wrap', marginBottom: spacing[3] }}>
-          <label style={{ ...labelBase, margin: 0 }}>Statut</label>
-          <StatutSelect opts={ETAPE_STATUTS} value={etape.statut} disabled={readonly || busy} onChange={onEtapeStatut} />
-          <span style={{ fontFamily: fonts.body, fontSize: fontSizes.xs, color: colors.textLight }}>
-            {etape.date_debut ? `Début ${dateFr(etape.date_debut)}` : ''}{etape.date_fin ? ` · Fin ${dateFr(etape.date_fin)}` : ''}
-          </span>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: spacing[3], flexWrap: 'wrap', marginBottom: spacing[2] }}>
+          <div>
+            <label style={{ ...labelBase }}>Statut</label>
+            <StatutSelect opts={ETAPE_STATUTS} value={statut} disabled={readonly || busy} onChange={onStatut} />
+          </div>
+          {showDate && (
+            <div>
+              <label style={{ ...labelBase }}>Date effective</label>
+              <input type="date" value={dateEff} disabled={readonly || busy} onChange={(e) => setDateEff(e.target.value)}
+                style={{ ...inputBase, width: 'auto' }} />
+            </div>
+          )}
+          <button
+            onClick={() => onApply(statut, showDate ? (dateEff || null) : null)}
+            disabled={readonly || busy || !dirty}
+            style={{ ...buttonGold, fontSize: fontSizes.xs, padding: '8px 16px', opacity: (readonly || busy || !dirty) ? 0.5 : 1, cursor: (readonly || busy || !dirty) ? 'default' : 'pointer' }}
+          >{busy ? 'En cours…' : 'Appliquer'}</button>
+        </div>
+        <div style={{ fontFamily: fonts.body, fontSize: fontSizes.xs, color: colors.textLight, marginBottom: spacing[3] }}>
+          {etape.date_debut ? `Début ${dateFrOnly(etape.date_debut)}` : ''}{etape.date_fin ? ` · Réalisé le ${dateFrOnly(etape.date_fin)}` : ''}
         </div>
 
         <ChildBlock title="Actions à réaliser" items={taches} opts={TACHE_STATUTS} disabled={readonly || busy} onChange={(id, v) => onChild('taches', id, v)} />

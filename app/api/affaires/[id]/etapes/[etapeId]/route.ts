@@ -6,6 +6,8 @@ import { requireConseiller, modifierEtape, toHttp } from '@/lib/affaires'
 const Schema = z.object({
   versionAttendue: z.number().int().nonnegative(),
   statut: z.enum(['a_faire', 'en_cours', 'terminee', 'ignoree']),
+  // Date effective optionnelle (jour, sans heure) : 'YYYY-MM-DD'.
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullish(),
 })
 
 // POST /api/affaires/:id/etapes/:etapeId — changer le statut d'une étape
@@ -21,7 +23,8 @@ export async function POST(
     const parsed = Schema.safeParse(body)
     if (!parsed.success) return NextResponse.json({ error: 'Corps invalide' }, { status: 400 })
     const result = await modifierEtape(supabase, {
-      affaireId: id, versionAttendue: parsed.data.versionAttendue, elementId: etapeId, statut: parsed.data.statut,
+      affaireId: id, versionAttendue: parsed.data.versionAttendue, elementId: etapeId,
+      statut: parsed.data.statut, date: parsed.data.date ?? null,
     })
     return NextResponse.json(result)
   } catch (err) {

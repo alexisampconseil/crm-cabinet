@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { colors, fonts, fontSizes, fontWeights, spacing, radii, cardBase, inputBase, buttonOutline, buttonGold, statusBadge } from '@/lib/design-tokens'
-import { api, dateFr, StateMsg } from './lib'
+import { api, dateFr, StateMsg, HelpTip } from './lib'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Any = any
@@ -15,10 +15,31 @@ const INFO_TYPES = [
   { value: 'texte', label: 'Texte' }, { value: 'nombre', label: 'Nombre' }, { value: 'montant', label: 'Montant' },
   { value: 'booleen', label: 'Oui / Non' }, { value: 'date', label: 'Date' }, { value: 'enum', label: 'Choix' },
 ]
-const ELEMENT_BLOCS: { kind: 'tache' | 'document' | 'controle'; title: string; placeholder: string }[] = [
-  { kind: 'tache', title: 'Actions à réaliser', placeholder: 'Ex : Recueillir la signature' },
-  { kind: 'document', title: 'Documents à obtenir', placeholder: 'Ex : Pièce d’identité' },
-  { kind: 'controle', title: 'Contrôles à valider', placeholder: 'Ex : Conformité LCB-FT' },
+const ELEMENT_BLOCS: { kind: 'tache' | 'document' | 'controle'; title: string; placeholder: string; help: string; examples: string[] }[] = [
+  { kind: 'tache', title: 'Actions à réaliser', placeholder: 'Ex : Recueillir la signature',
+    help: 'Une action correspond à une tâche que le conseiller doit accomplir pendant cette étape.',
+    examples: ['Vérifier que le questionnaire investisseur est à jour', 'Présenter la solution au client', 'Envoyer les documents à signer'] },
+  { kind: 'document', title: 'Documents à obtenir', placeholder: 'Ex : Pièce d’identité',
+    help: 'Un document est une pièce qui doit être obtenue, déposée ou validée pendant l’étape.',
+    examples: ['Pièce d’identité', 'Rapport d’adéquation', 'Document d’informations clés', 'Bulletin de souscription signé'] },
+  { kind: 'controle', title: 'Contrôles à valider', placeholder: 'Ex : Conformité LCB-FT',
+    help: 'Un contrôle permet de confirmer qu’une vérification nécessaire a bien été réalisée.',
+    examples: ['Vérifier que les documents ont été remis avant la signature', 'Vérifier la cohérence entre le profil du client et la solution proposée', 'Vérifier la présence de toutes les signatures'] },
+]
+const HELP = {
+  etape: { title: 'Étape', text: 'Une étape correspond à une grande phase du suivi de l’affaire.',
+    examples: ['Analyse du besoin', 'Vérification des informations du client', 'Remise des documents', 'Signature', 'Contrôle final'] },
+  obligatoire: { title: 'Obligatoire', text: 'Lorsqu’un élément est obligatoire, l’affaire ne pourra pas être terminée tant qu’il n’est pas correctement complété ou validé.' },
+  information: { title: 'Information à renseigner', text: 'Une information à renseigner est une donnée propre à l’affaire qui doit être conservée dans son suivi.',
+    examples: ['Objectif du client', 'Horizon de placement', 'Date de signature', 'Profil de risque confirmé'] },
+  publication: { title: 'Publication', text: 'Une frise publiée est utilisée pour les nouvelles affaires et ne peut plus être modifiée. Pour la faire évoluer, dupliquez-la afin de créer un nouveau brouillon.' },
+}
+const EXAMPLE_FRISE: { titre: string; items: [string, string][] }[] = [
+  { titre: 'Analyse du besoin', items: [['Action', 'vérifier les objectifs du client'], ['Contrôle', 'profil investisseur à jour']] },
+  { titre: 'Étude de la solution', items: [['Action', 'sélectionner une solution adaptée'], ['Document', 'documentation du produit'], ['Contrôle', 'adéquation de la solution']] },
+  { titre: 'Remise des documents', items: [['Document', 'rapport d’adéquation'], ['Document', 'document d’informations clés'], ['Contrôle', 'remise avant signature']] },
+  { titre: 'Validation du client', items: [['Action', 'recueillir l’accord du client'], ['Document', 'bulletin signé']] },
+  { titre: 'Réalisation et contrôle final', items: [['Action', 'transmettre l’opération'], ['Contrôle', 'dossier complet']] },
 ]
 
 export default function ParametrageAffairesClient() {
@@ -155,6 +176,7 @@ function FrisesPanel({ cfg, reload, post, run }: { cfg: Any; reload: () => Promi
   const [sel, setSel] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  const [info, setInfo] = useState<string | null>(null)
   const [editing, setEditing] = useState<string | null>(null)
   const nomFamille = (id: string) => cfg.familles.find((f: Any) => f.id === id)?.libelle ?? id
 
@@ -164,9 +186,29 @@ function FrisesPanel({ cfg, reload, post, run }: { cfg: Any; reload: () => Promi
   const createLabel = famBrouillon ? 'Brouillon déjà existant' : famPublie ? 'Créer une nouvelle version' : 'Créer la frise'
 
   const createFrise = async () => {
-    setErr(null); setBusy(true)
+    setErr(null); setInfo(null); setBusy(true)
     try { const row = await post('/api/affaires/parametrage/frises', { famille_id: sel }); await reload(); setEditing(row.id) }
     catch (e) { setErr(e instanceof Error ? e.message : 'Erreur') }
+    finally { setBusy(false) }
+  }
+
+  // Duplication d'une frise publiée : crée un nouveau brouillon reprenant toute
+  // la structure (étapes + éléments + informations). Si un brouillon existe déjà
+  // pour la famille, on ne crée pas de doublon : on ouvre le brouillon existant.
+  const duplicate = async (fid: string) => {
+    setErr(null); setInfo(null)
+    const existant = frises.find((f) => f.famille_id === fid && f.statut === 'brouillon')
+    if (existant) {
+      setInfo('Un brouillon existe déjà pour cette famille — ouverture du brouillon existant (la duplication n’a pas été refaite).')
+      setEditing(existant.id)
+      return
+    }
+    setBusy(true)
+    try {
+      const row = await post('/api/affaires/parametrage/frises', { famille_id: fid })
+      await reload(); setEditing(row.id)
+      setInfo('Nouvelle version créée en brouillon à partir de la frise publiée. La version publiée reste inchangée.')
+    } catch (e) { setErr(e instanceof Error ? e.message : 'Erreur') }
     finally { setBusy(false) }
   }
 
@@ -191,13 +233,14 @@ function FrisesPanel({ cfg, reload, post, run }: { cfg: Any; reload: () => Promi
         {sel && famPublie && !famBrouillon && <p style={hint}>La nouvelle version reprendra la structure de la frise publiée. Une version publiée reste non modifiable.</p>}
         {sel && famBrouillon && <p style={hint}>Un brouillon existe déjà pour cette famille : modifiez-le puis publiez-le.</p>}
         {err && <StateMsg kind="error">{err}</StateMsg>}
+        {info && <StateMsg kind="success">{info}</StateMsg>}
       </div>
 
       {/* Versions par famille */}
       {byFamille.size === 0 && <StateMsg kind="empty">Aucune frise pour l’instant.</StateMsg>}
       {[...byFamille.entries()].map(([fid, versions]) => (
         <div key={fid} style={{ ...cardBase, padding: spacing[4], marginBottom: spacing[3] }}>
-          <h4 style={{ fontFamily: fonts.body, fontSize: fontSizes.base, fontWeight: fontWeights.semibold, color: colors.blueDeep, marginBottom: spacing[3] }}>{nomFamille(fid)}</h4>
+          <h4 style={{ fontFamily: fonts.body, fontSize: fontSizes.base, fontWeight: fontWeights.semibold, color: colors.blueDeep, marginBottom: spacing[3] }}>{nomFamille(fid)}<HelpTip title={HELP.publication.title} text={HELP.publication.text} /></h4>
           {versions.map((v) => (
             <div key={v.id}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: spacing[3], padding: `${spacing[2]} 0`, borderBottom: `1px solid ${colors.border}`, flexWrap: 'wrap' }}>
@@ -206,7 +249,8 @@ function FrisesPanel({ cfg, reload, post, run }: { cfg: Any; reload: () => Promi
                   {v.publie_le && <span style={{ color: colors.textMid }}>publiée le {dateFr(v.publie_le)}</span>}
                   <span style={{ color: colors.textLight, fontSize: fontSizes.xs }}>v{v.version}</span>
                 </span>
-                <div style={{ display: 'flex', gap: spacing[2] }}>
+                <div style={{ display: 'flex', gap: spacing[2], flexWrap: 'wrap' }}>
+                  {v.statut === 'publie' && <button style={{ ...buttonGold, fontSize: fontSizes.xs, padding: '6px 12px', opacity: busy ? 0.5 : 1, cursor: busy ? 'default' : 'pointer' }} disabled={busy} onClick={() => duplicate(fid)}>Dupliquer pour créer une nouvelle version</button>}
                   {v.statut === 'brouillon' && <button style={miniBtn} onClick={() => setEditing(editing === v.id ? null : v.id)}>{editing === v.id ? 'Fermer' : 'Modifier'}</button>}
                   {v.statut === 'brouillon' && <button style={miniBtn} onClick={() => run(() => post(`/api/affaires/parametrage/frises/${v.id}/publier`, {}))}>Publier</button>}
                   {v.statut !== 'archive' && <button style={miniBtn} onClick={() => run(() => post(`/api/affaires/parametrage/frises/${v.id}/archiver`, {}))}>Archiver</button>}
@@ -228,6 +272,7 @@ function FriseEditor({ versionId, familleId, types, onDone }: { versionId: strin
   const [err, setErr] = useState<string | null>(null)
   const [newEtape, setNewEtape] = useState('')
   const [showInfos, setShowInfos] = useState(false)
+  const [showExample, setShowExample] = useState(false)
 
   const base = `/api/affaires/parametrage/frises/${versionId}`
   const load = useCallback(async () => { setDetail(await api<Any>(base)) }, [base])
@@ -263,6 +308,15 @@ function FriseEditor({ versionId, familleId, types, onDone }: { versionId: strin
   return (
     <div style={{ marginTop: spacing[3], padding: spacing[4], backgroundColor: colors.offWhite, borderRadius: radii.sm }}>
       {err && <StateMsg kind="error">{err}</StateMsg>}
+      {showExample && <ExampleFriseModal onClose={() => setShowExample(false)} />}
+
+      {/* Barre d'entête de l'éditeur : titre + aide + exemple */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: spacing[3], marginBottom: spacing[3], flexWrap: 'wrap' }}>
+        <span style={{ fontFamily: fonts.body, fontSize: fontSizes.sm, fontWeight: fontWeights.bold, color: colors.blueDeep, display: 'inline-flex', alignItems: 'center' }}>
+          Étapes de la frise<HelpTip title={HELP.etape.title} text={HELP.etape.text} examples={HELP.etape.examples} />
+        </span>
+        <button style={{ ...buttonOutline, fontSize: fontSizes.xs, padding: '6px 12px', cursor: 'pointer' }} onClick={() => setShowExample(true)}>Voir un exemple de frise</button>
+      </div>
 
       {/* Étapes */}
       {etapes.length === 0 && <StateMsg kind="empty">Aucune étape. Ajoutez la première ci-dessous.</StateMsg>}
@@ -287,9 +341,12 @@ function FriseEditor({ versionId, familleId, types, onDone }: { versionId: strin
 
       {/* Informations à renseigner (panneau facultatif replié) */}
       <div style={{ marginTop: spacing[5] }}>
-        <button onClick={() => setShowInfos(!showInfos)} style={{ ...buttonOutline, fontSize: fontSizes.xs, padding: '6px 14px', cursor: 'pointer' }}>
-          {showInfos ? '▾' : '▸'} Informations à renseigner{(detail.champs as Any[]).length > 0 ? ` (${(detail.champs as Any[]).length})` : ''}
-        </button>
+        <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+          <button onClick={() => setShowInfos(!showInfos)} style={{ ...buttonOutline, fontSize: fontSizes.xs, padding: '6px 14px', cursor: 'pointer' }}>
+            {showInfos ? '▾' : '▸'} Informations à renseigner{(detail.champs as Any[]).length > 0 ? ` (${(detail.champs as Any[]).length})` : ''}
+          </button>
+          <HelpTip title={HELP.information.title} text={HELP.information.text} examples={HELP.information.examples} />
+        </span>
         {showInfos && (
           <div style={{ marginTop: spacing[3] }}>
             {(detail.champs as Any[]).map((c) => (
@@ -328,7 +385,7 @@ function EtapeCard({ etape, index, total, busy, taches, documents, controles, on
         <div style={{ marginTop: spacing[3], paddingLeft: spacing[3], borderLeft: `2px solid ${colors.border}` }}>
           {ELEMENT_BLOCS.map((b) => (
             <div key={b.kind} style={{ marginBottom: spacing[3] }}>
-              <div style={{ fontFamily: fonts.body, fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: colors.gold, fontWeight: fontWeights.bold, marginBottom: 4 }}>{b.title}</div>
+              <div style={{ fontFamily: fonts.body, fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: colors.gold, fontWeight: fontWeights.bold, marginBottom: 4, display: 'flex', alignItems: 'center' }}>{b.title}<HelpTip title={b.title} text={b.help} examples={b.examples} /></div>
               {listOf(b.kind).map((x) => (
                 <div key={x.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: fonts.body, fontSize: fontSizes.sm, color: colors.text, padding: '2px 0' }}>
                   <span>{x.libelle}{x.obligatoire ? ' *' : ''}</span>
@@ -355,6 +412,7 @@ function ChildAdder({ placeholder, busy, onAdd }: { placeholder: string; busy: b
       <label style={{ fontFamily: fonts.body, fontSize: fontSizes.xs, display: 'flex', gap: 4, alignItems: 'center', color: colors.textMid }}>
         <input type="checkbox" checked={obligatoire} onChange={(e) => setObligatoire(e.target.checked)} />obligatoire
       </label>
+      <HelpTip title={HELP.obligatoire.title} text={HELP.obligatoire.text} />
       <button style={{ ...miniBtn, opacity: busy ? 0.5 : 1 }} disabled={busy} onClick={submit}>+</button>
     </div>
   )
@@ -382,6 +440,7 @@ function ChampAdder({ famTypes, busy, onAdd }: { famTypes: Any[]; busy: boolean;
       <label style={{ fontFamily: fonts.body, fontSize: fontSizes.xs, display: 'flex', gap: 4, alignItems: 'center', color: colors.textMid }}>
         <input type="checkbox" checked={obligatoire} onChange={(e) => setObligatoire(e.target.checked)} />obligatoire
       </label>
+      <HelpTip title={HELP.obligatoire.title} text={HELP.obligatoire.text} />
       <label style={{ fontFamily: fonts.body, fontSize: fontSizes.xs, display: 'flex', gap: 4, alignItems: 'center', color: colors.textMid }}>
         <input type="checkbox" checked={limiter} onChange={(e) => setLimiter(e.target.checked)} disabled={famTypes.length === 0} />Limiter à un type
       </label>
@@ -397,6 +456,43 @@ function ChampAdder({ famTypes, busy, onAdd }: { famTypes: Any[]; busy: boolean;
 
 function FieldError({ children }: { children: React.ReactNode }) {
   return <p style={{ fontFamily: fonts.body, fontSize: fontSizes.xs, color: colors.danger, marginTop: 4 }}>{children}</p>
+}
+
+// Modale purement informative : exemple visuel de frise. N'ajoute rien à la frise.
+function ExampleFriseModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div style={exM.backdrop} onClick={onClose}>
+      <div style={exM.box} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing[3] }}>
+          <h3 style={exM.title}>Exemple de frise — Épargne</h3>
+          <button style={exM.close} onClick={onClose} aria-label="Fermer">✕</button>
+        </div>
+        <div style={exM.note}>Cet exemple est indicatif et doit être adapté aux procédures et obligations du cabinet.</div>
+        {EXAMPLE_FRISE.map((et, i) => (
+          <div key={i} style={exM.step}>
+            <div style={exM.stepTitle}>{i + 1}. {et.titre}</div>
+            {et.items.map(([kind, lib], j) => (
+              <div key={j} style={exM.item}><span style={exM.kind}>{kind}</span><span>{lib}</span></div>
+            ))}
+          </div>
+        ))}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: spacing[3] }}>
+          <button style={{ ...buttonGold, fontSize: fontSizes.xs, padding: '8px 18px', cursor: 'pointer' }} onClick={onClose}>Fermer</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+const exM = {
+  backdrop: { position: 'fixed', inset: 0, backgroundColor: 'rgba(20,30,45,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: spacing[4] } as React.CSSProperties,
+  box: { backgroundColor: colors.white, borderRadius: radii.md, padding: spacing[6], width: 'min(540px, 94vw)', maxHeight: '88vh', overflowY: 'auto' } as React.CSSProperties,
+  title: { fontFamily: fonts.heading, fontSize: fontSizes.lg, color: colors.blueDeep, marginBottom: spacing[2] } as React.CSSProperties,
+  close: { border: 'none', background: 'none', fontSize: fontSizes.lg, color: colors.textLight, cursor: 'pointer', lineHeight: 1 } as React.CSSProperties,
+  note: { fontFamily: fonts.body, fontSize: fontSizes.xs, color: colors.warning, backgroundColor: colors.warningBg, border: `1px solid ${colors.warningBorder}`, padding: spacing[3], marginBottom: spacing[4] } as React.CSSProperties,
+  step: { marginBottom: spacing[3], paddingBottom: spacing[3], borderBottom: `1px solid ${colors.border}` } as React.CSSProperties,
+  stepTitle: { fontFamily: fonts.body, fontSize: fontSizes.base, fontWeight: fontWeights.semibold, color: colors.blueDeep, marginBottom: spacing[2] } as React.CSSProperties,
+  item: { display: 'flex', alignItems: 'center', gap: spacing[2], fontFamily: fonts.body, fontSize: fontSizes.sm, color: colors.text, padding: '2px 0' } as React.CSSProperties,
+  kind: { display: 'inline-block', minWidth: 74, fontSize: '0.6rem', fontWeight: fontWeights.bold, textTransform: 'uppercase', letterSpacing: '0.06em', color: colors.gold } as React.CSSProperties,
 }
 
 const tabBtn: React.CSSProperties = { fontFamily: fonts.body, fontSize: fontSizes.sm, fontWeight: fontWeights.medium, color: colors.textMid, padding: '8px 16px', border: `1px solid ${colors.border}`, backgroundColor: colors.white, borderRadius: '6px', cursor: 'pointer' }

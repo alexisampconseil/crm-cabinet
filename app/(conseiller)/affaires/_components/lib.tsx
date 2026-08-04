@@ -12,6 +12,23 @@ export function dateFr(d: string | null | undefined): string {
   if (!d) return '—'
   return new Intl.DateTimeFormat('fr-FR').format(new Date(d))
 }
+// Date « jour » sans heure ni fuseau : on isole la portion YYYY-MM-DD de la
+// valeur stockée (timestamptz sérialisé) — aucune construction de Date, donc
+// aucun décalage de fuseau horaire.
+export function dateOnly(d: string | null | undefined): string {
+  return d ? String(d).slice(0, 10) : ''
+}
+export function dateFrOnly(d: string | null | undefined): string {
+  const s = dateOnly(d)
+  if (!s) return '—'
+  const [y, m, day] = s.split('-')
+  return `${day}/${m}/${y}`
+}
+// Date du jour dans le fuseau local du conseiller, au format 'YYYY-MM-DD'.
+export function todayLocal(): string {
+  const d = new Date(); const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
 
 // ── Libellés & badges ────────────────────────────────────────────────────────
 export const AFFAIRE_STATUT_LABEL: Record<string, string> = {
@@ -229,6 +246,50 @@ export function FraisFields(props: {
       </div>
     </div>
   )
+}
+
+// ── Aide contextuelle : icône ⓘ + popover (clic + clavier + survol) ──────────
+export function HelpTip({ title, text, examples }: { title?: string; text: string; examples?: string[] }) {
+  const [open, setOpen] = React.useState(false)
+  // Ouverture au clic et au clavier (Entrée/Espace déclenchent le clic natif).
+  // Le survol est un bonus qui n'entre pas en conflit avec le clic (il ne fait
+  // qu'ouvrir). Fermeture : nouveau clic, Échap, perte de focus, ou sortie souris.
+  return (
+    <span style={ht.wrap} onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+      <button
+        type="button"
+        aria-label={'Aide' + (title ? ' : ' + title : '')}
+        aria-expanded={open}
+        onClick={() => setOpen(true)}
+        onFocus={() => setOpen(true)}
+        onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false) }}
+        onBlur={() => setOpen(false)}
+        style={ht.btn}
+      >ⓘ</button>
+      {open && (
+        <span role="tooltip" style={ht.pop}>
+          {title && <span style={ht.title}>{title}</span>}
+          <span style={ht.text}>{text}</span>
+          {examples && examples.length > 0 && (
+            <span style={ht.exWrap}>
+              <span style={ht.exLabel}>Exemples</span>
+              {examples.map((ex, i) => <span key={i} style={ht.exItem}>• {ex}</span>)}
+            </span>
+          )}
+        </span>
+      )}
+    </span>
+  )
+}
+const ht = {
+  wrap: { position: 'relative', display: 'inline-flex', verticalAlign: 'middle', marginLeft: spacing[1] } as React.CSSProperties,
+  btn: { border: 'none', background: 'none', cursor: 'pointer', color: colors.blue, fontSize: '0.85rem', lineHeight: 1, padding: 0, fontFamily: fonts.body } as React.CSSProperties,
+  pop: { position: 'absolute', top: '140%', left: 0, zIndex: 1200, width: 260, backgroundColor: colors.white, border: `1px solid ${colors.border}`, borderRadius: radii.md, boxShadow: '0 8px 28px rgba(45,68,98,0.16)', padding: spacing[3], display: 'flex', flexDirection: 'column', gap: spacing[1], textAlign: 'left', cursor: 'default' } as React.CSSProperties,
+  title: { fontFamily: fonts.body, fontSize: fontSizes.xs, fontWeight: fontWeights.bold, color: colors.blueDeep, textTransform: 'uppercase', letterSpacing: '0.06em' } as React.CSSProperties,
+  text: { fontFamily: fonts.body, fontSize: fontSizes.sm, color: colors.textMid, lineHeight: 1.5 } as React.CSSProperties,
+  exWrap: { display: 'flex', flexDirection: 'column', gap: 2, marginTop: spacing[1], paddingTop: spacing[1], borderTop: `1px solid ${colors.border}` } as React.CSSProperties,
+  exLabel: { fontFamily: fonts.body, fontSize: '0.6rem', fontWeight: fontWeights.bold, letterSpacing: '0.1em', textTransform: 'uppercase', color: colors.gold } as React.CSSProperties,
+  exItem: { fontFamily: fonts.body, fontSize: fontSizes.xs, color: colors.textMid } as React.CSSProperties,
 }
 
 const fx = {
