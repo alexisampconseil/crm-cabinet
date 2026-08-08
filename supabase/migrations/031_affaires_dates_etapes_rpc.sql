@@ -75,6 +75,12 @@ $$;
 REVOKE ALL     ON FUNCTION public.fn_affaire_etape_statut(UUID,BIGINT,UUID,TEXT,DATE) FROM PUBLIC, anon;
 GRANT  EXECUTE ON FUNCTION public.fn_affaire_etape_statut(UUID,BIGINT,UUID,TEXT,DATE) TO authenticated, service_role;
 
+-- Rafraîchit le cache de schéma de PostgREST pour exposer immédiatement la
+-- nouvelle signature après (re)déploiement. Sans ce rechargement, l'API peut
+-- répondre « Impossible de trouver la fonction public.fn_affaire_etape_statut(...) »
+-- alors que la fonction existe bien en base avec la bonne signature.
+NOTIFY pgrst, 'reload schema';
+
 -- =============================================================================
 -- PLAN DE ROLLBACK (manuel — non exécuté ici)
 -- =============================================================================
