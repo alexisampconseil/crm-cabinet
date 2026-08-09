@@ -8,7 +8,7 @@ import {
   PASSIF_NATURE, REV_NATURE, REV_REGIME_FISCAL,
 } from '@/lib/referentiel/listes'
 import {
-  AF_NATURES_AVEC_DATE, AF_NATURES_AVEC_DETENTION,
+  AF_NATURES_AVEC_DATE, AF_NATURES_AVEC_DETENTION, AF_NATURES_ELIGIBLES_GESTION,
   IMMO_NATURES_LOCATIVES, IMMO_NATURES_REGIME_FONCIER, IMMO_NATURES_REGIME_MEUBLE,
 } from '@/lib/referentiel/conditionsProduit'
 import {
@@ -44,13 +44,26 @@ export default function PatrimoinePage() {
   // ---- Actifs financiers ----
   const addActif = () => update('actifsFinanciers', [...actifs, {
     id: id(), client_id: client.id, nature: 'AV', libelle: '', montant: null,
-    souscrit_par: 'client', date_souscription: null, detail: {}, created_at: new Date().toISOString(),
+    souscrit_par: 'client', date_souscription: null, sous_gestion_cabinet: false, detail: {}, created_at: new Date().toISOString(),
   } as ActifFinancier])
 
   const setActif = (idx: number, field: keyof ActifFinancier) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const val = field === 'montant' ? (e.target.value ? Number(e.target.value) : null) : (e.target.value || null)
     update('actifsFinanciers', actifs.map((a, i) => i === idx ? { ...a, [field]: val } : a))
   }
+
+  // Changer la nature : si la nouvelle nature n'est pas éligible à la gestion
+  // cabinet, on remet sous_gestion_cabinet à FALSE (cohérence avec le garde-fou base).
+  const setActifNature = (idx: number) => (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const nature = e.target.value as ActifFinancier['nature']
+    const eligible = (AF_NATURES_ELIGIBLES_GESTION as readonly string[]).includes(nature)
+    update('actifsFinanciers', actifs.map((a, i) => i === idx
+      ? { ...a, nature, sous_gestion_cabinet: eligible ? a.sous_gestion_cabinet : false }
+      : a))
+  }
+
+  const setSousGestion = (idx: number, checked: boolean) =>
+    update('actifsFinanciers', actifs.map((a, i) => i === idx ? { ...a, sous_gestion_cabinet: checked } : a))
 
   const setActifDetail = (idx: number, key: string, numeric = false) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const raw = e.target.value
@@ -143,13 +156,14 @@ export default function PatrimoinePage() {
         {actifs.map((a, i) => {
           const avecDate = (AF_NATURES_AVEC_DATE as readonly string[]).includes(a.nature)
           const avecDetention = (AF_NATURES_AVEC_DETENTION as readonly string[]).includes(a.nature)
+          const eligibleGestion = (AF_NATURES_ELIGIBLES_GESTION as readonly string[]).includes(a.nature)
           const modeDetention = detailStr(a.detail, 'mode_detention')
           const enNuePropriete = modeDetention === 'nue_propriete'
           return (
             <ItemCard key={a.id} onDelete={() => removeActif(i)}>
               <div style={s.row}>
                 <Field label="Nature" w="180px">
-                  <select style={selStyle} value={a.nature} onChange={setActif(i, 'nature')}>
+                  <select style={selStyle} value={a.nature} onChange={setActifNature(i)}>
                     {AF_NATURE.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
                 </Field>
@@ -163,6 +177,16 @@ export default function PatrimoinePage() {
                   <Field label="Date souscription" w="150px"><CI type="date" val={a.date_souscription} onChange={setActif(i, 'date_souscription')} /></Field>
                 )}
                 <Field label="Montant (€)" w="140px"><CI type="number" val={a.montant?.toString()} onChange={setActif(i, 'montant')} align="right" /></Field>
+                {/* Sous gestion cabinet — uniquement pour les natures éligibles */}
+                {eligibleGestion && (
+                  <Field label="Gestion cabinet" w="260px">
+                    <label style={s.gestionToggle}>
+                      <input type="checkbox" checked={!!a.sous_gestion_cabinet} onChange={e => setSousGestion(i, e.target.checked)} />
+                      <span>Sous gestion du cabinet</span>
+                    </label>
+                    <span style={s.gestionHelp}>Activez cette option uniquement si ce placement est réellement suivi ou géré par le cabinet. Un actif non coché reste dans le patrimoine du client mais n’entre pas dans les encours du cabinet.</span>
+                  </Field>
+                )}
               </div>
               {avecDetention && (
                 <div style={s.detailRow}>
@@ -333,7 +357,7 @@ export default function PatrimoinePage() {
 
 function BilanCard({ label, value, color, bold }: { label: string; value: string; color: string; bold?: boolean }) {
   return (
-    <div style={{ ...cardBase, padding: `${spacing[4]} ${spacing[5]}`, flex: 1, borderTop: `2px solid ${color}` }}>
+    <div style={{ ...cardBase, padding: `${spacing[4]} ${spacing[5]}`, flex: 1, minWidth: 0, borderTop: `2px solid ${color}` }}>
       <p style={{ fontFamily: fonts.body, fontSize: fontSizes.xs, fontWeight: fontWeights.bold, letterSpacing: letterSpacings.label, textTransform: 'uppercase', color: colors.textMid, marginBottom: spacing[1] }}>{label}</p>
       <p style={{ fontFamily: fonts.heading, fontSize: '1.2rem', fontWeight: bold ? fontWeights.medium : fontWeights.light, color: bold ? color : colors.blueDeep }}>{value}</p>
     </div>
@@ -391,7 +415,7 @@ function BudgetSection({ title, total, postes, allBudget, onAdd, setPoste, setPo
   avecNature?: boolean
 }) {
   return (
-    <div style={{ ...cardBase, boxShadow: shadows.sm, borderTop: `2px solid ${color}`, padding: spacing[5] } as React.CSSProperties}>
+    <div style={{ ...cardBase, boxShadow: shadows.sm, borderTop: `2px solid ${color}`, padding: spacing[5], minWidth: 0 } as React.CSSProperties}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing[4] }}>
         <div>
           <h3 style={{ fontFamily: fonts.body, fontSize: fontSizes.base, fontWeight: fontWeights.semibold, color: colors.blueDeep }}>{title}</h3>
@@ -506,4 +530,13 @@ const s = {
     letterSpacing: letterSpacings.wider, textTransform: 'uppercase' as const,
     color: colors.textMid,
   },
+  gestionToggle: {
+    display: 'flex', alignItems: 'center', gap: spacing[2],
+    fontFamily: fonts.body, fontSize: fontSizes.sm, color: colors.text,
+    padding: '6px 0', cursor: 'pointer',
+  } as React.CSSProperties,
+  gestionHelp: {
+    fontFamily: fonts.body, fontSize: '0.62rem', color: colors.textLight,
+    lineHeight: 1.4, marginTop: '2px',
+  } as React.CSSProperties,
 }

@@ -104,6 +104,8 @@ const s = {
   tabs: {
     display: 'flex',
     gap: 0,
+    minWidth: 0,
+    overflowX: 'auto' as const, // les onglets défilent localement plutôt que d'élargir la page
   },
   tab: {
     fontFamily: fonts.body,

@@ -36,7 +36,8 @@ export default async function PortefeuillesPage() {
 
   const [clientsRes, actifsRes] = await Promise.all([
     supabase.from('clients').select('id, nom, prenom, encours, profil').eq('statut', 'client').order('encours', { ascending: false }),
-    supabase.from('actifs_financiers').select('nature, montant, client_id'),
+    // Portefeuille / encours cabinet : uniquement les actifs réellement sous gestion.
+    supabase.from('actifs_financiers').select('nature, montant, client_id').eq('sous_gestion_cabinet', true),
   ])
 
   const clients = (clientsRes.data ?? []) as ClientRow[]
@@ -96,7 +97,7 @@ export default async function PortefeuillesPage() {
                   <TH>Client</TH>
                   <TH>Profil</TH>
                   <TH right>Encours déclaré</TH>
-                  <TH right>Actifs saisis</TH>
+                  <TH right>Sous gestion</TH>
                   <TH />
                 </tr>
               </thead>
@@ -178,7 +179,7 @@ export default async function PortefeuillesPage() {
             )}
             <div style={{ marginTop: spacing[6], paddingTop: spacing[4], borderTop: `1px solid ${colors.border}` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <p style={{ fontFamily: fonts.body, fontSize: fontSizes.sm, fontWeight: fontWeights.bold, color: colors.blueDeep }}>Total actifs saisis</p>
+                <p style={{ fontFamily: fonts.body, fontSize: fontSizes.sm, fontWeight: fontWeights.bold, color: colors.blueDeep }}>Total sous gestion</p>
                 <p style={{ fontFamily: fonts.body, fontSize: fontSizes.sm, fontWeight: fontWeights.bold, color: colors.blueDeep }}>{fmt(totalActifsAll)}</p>
               </div>
             </div>

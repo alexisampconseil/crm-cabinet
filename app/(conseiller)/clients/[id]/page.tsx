@@ -201,6 +201,7 @@ const s = {
     display: 'flex',
     flexDirection: 'column' as const,
     gap: spacing[5],
+    minWidth: 0, // autorise la colonne principale à rétrécir (pas de débordement)
   },
   sideCol: {
     display: 'flex',

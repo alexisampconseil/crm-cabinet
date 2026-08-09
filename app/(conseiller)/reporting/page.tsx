@@ -25,7 +25,8 @@ export default async function ReportingPage() {
     supabase.from('documents_reglementaires').select('type, created_at').order('created_at'),
     supabase.from('relances').select('statut, type, created_at').order('created_at'),
     supabase.from('access_logs').select('action, created_at').order('created_at', { ascending: false }).limit(200),
-    supabase.from('actifs_financiers').select('nature, montant'),
+    // Encours cabinet par classe : uniquement les actifs réellement sous gestion.
+    supabase.from('actifs_financiers').select('nature, montant').eq('sous_gestion_cabinet', true),
   ])
 
   const clients = (clientsRes.data ?? []) as ClientRow[]
@@ -105,16 +106,16 @@ export default async function ReportingPage() {
 
           {/* Répartition des actifs */}
           <div style={{ ...cardBase, ...s.card }}>
-            <h2 style={{ ...s.cardTitle, marginBottom: spacing[5] }}>Actifs financiers par classe</h2>
+            <h2 style={{ ...s.cardTitle, marginBottom: spacing[5] }}>Encours cabinet par classe</h2>
             {Object.keys(actifsByNature).length === 0 ? (
-              <p style={{ fontFamily: fonts.body, fontSize: fontSizes.sm, color: colors.textLight, fontStyle: 'italic' }}>Aucun actif saisi dans les fiches clients.</p>
+              <p style={{ fontFamily: fonts.body, fontSize: fontSizes.sm, color: colors.textLight, fontStyle: 'italic' }}>Aucun actif sous gestion du cabinet.</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column' as const, gap: spacing[3] }}>
                 {Object.entries(actifsByNature).sort((a, b) => b[1] - a[1]).map(([nature, total]) => (
                   <BarRow key={nature} label={nature} value={fmt(total)} pct={(totalActifs > 0 ? Math.round((total / totalActifs) * 100) : 0)} color={colors.blue} />
                 ))}
                 <div style={{ paddingTop: spacing[3], borderTop: `1px solid ${colors.border}`, display: 'flex', justifyContent: 'space-between' }}>
-                  <p style={{ fontFamily: fonts.body, fontSize: fontSizes.sm, fontWeight: fontWeights.bold, color: colors.blueDeep }}>Total actifs saisis</p>
+                  <p style={{ fontFamily: fonts.body, fontSize: fontSizes.sm, fontWeight: fontWeights.bold, color: colors.blueDeep }}>Total sous gestion</p>
                   <p style={{ fontFamily: fonts.body, fontSize: fontSizes.sm, fontWeight: fontWeights.bold, color: colors.blueDeep }}>{fmt(totalActifs)}</p>
                 </div>
               </div>

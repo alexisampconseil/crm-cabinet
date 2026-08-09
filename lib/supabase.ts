@@ -139,6 +139,10 @@ export interface ActifFinancier {
   montant: number | null
   souscrit_par: 'client' | 'conjoint' | 'commun' | null
   date_souscription: string | null
+  // Sous gestion du cabinet : l'actif entre dans le portefeuille/encours du
+  // cabinet (uniquement pour les natures éligibles — cf. migration 032). FALSE
+  // par défaut ; n'affecte jamais le patrimoine total du client.
+  sous_gestion_cabinet: boolean
   // detail.mode_detention / type_demembrement / age_usufruitier /
   // date_demembrement / lien_usufruitier — cf. lib/referentiel/listes.ts.
   detail: Record<string, unknown>

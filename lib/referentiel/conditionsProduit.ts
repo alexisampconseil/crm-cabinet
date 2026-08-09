@@ -22,6 +22,15 @@ export const AF_NATURES_AVEC_DETENTION = [
   'AV', 'PER', 'SCPI', 'Capitalisation', 'Autre',
 ] as const
 
+// Natures d'actifs financiers ÉLIGIBLES à la gestion cabinet : produits
+// réellement distribués/suivis par le cabinet. Les produits bancaires classiques
+// (Livret A/LDDS/LEP/CEL/PEL → 'Livret', 'CompteCourant') et le fourre-tout
+// 'Autre' en sont exclus. Source unique côté applicatif — doit rester alignée
+// avec la fonction SQL public.af_nature_eligible_gestion (migration 032).
+export const AF_NATURES_ELIGIBLES_GESTION = [
+  'AV', 'PER', 'SCPI', 'Capitalisation', 'PEA', 'CTO', 'PrivateEquity',
+] as const
+
 // ── Patrimoine immobilier ─────────────────────────────────────────────────────
 
 // Natures génératrices de revenus locatifs.

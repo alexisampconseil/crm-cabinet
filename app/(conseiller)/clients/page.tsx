@@ -47,10 +47,19 @@ function formatDate(d: string | null) {
   return new Intl.DateTimeFormat('fr-FR').format(new Date(d))
 }
 
+// L'e-mail « principal » du client est saisi dans l'onglet Famille (famille.email),
+// avec repli sur clients.email — même source que l'en-tête de la fiche client.
+type ClientRow = Client & { famille?: { email: string | null } | { email: string | null }[] | null }
+function contactEmail(c: ClientRow): string | null {
+  const fam = c.famille
+  const famEmail = Array.isArray(fam) ? fam[0]?.email : fam?.email
+  return (famEmail ?? c.email) || null
+}
+
 export default function ClientsPage() {
   const router = useRouter()
   const [debugInfo, setDebugInfo] = useState<string | null>(null)
-  const [clients, setClients] = useState<Client[]>([])
+  const [clients, setClients] = useState<ClientRow[]>([])
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -68,7 +77,7 @@ export default function ClientsPage() {
     try {
       let query = supabase
         .from('clients')
-        .select('*')
+        .select('*, famille(email)')
         .order('nom', { ascending: true })
 
       if (filterStatut) query = query.eq('statut', filterStatut)
@@ -79,7 +88,7 @@ export default function ClientsPage() {
         setFetchError(error.message)
         setClients([])
       } else {
-        setClients((data ?? []) as Client[])
+        setClients((data ?? []) as ClientRow[])
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Erreur inconnue'
@@ -98,7 +107,7 @@ export default function ClientsPage() {
     return (
       c.nom.toLowerCase().includes(q) ||
       c.prenom.toLowerCase().includes(q) ||
-      (c.email ?? '').toLowerCase().includes(q) ||
+      (contactEmail(c) ?? '').toLowerCase().includes(q) ||
       (c.ville ?? '').toLowerCase().includes(q) ||
       (c.code ?? '').toLowerCase().includes(q)
     )
@@ -216,7 +225,7 @@ export default function ClientsPage() {
                     </div>
                     <div>
                       <div style={s.clientName}>{c.prenom} {c.nom}</div>
-                      {c.email && <div style={s.clientEmail}>{c.email}</div>}
+                      <div style={s.clientEmail}>{contactEmail(c) ?? '—'}</div>
                     </div>
                   </Link>
                 </td>

@@ -44,6 +44,10 @@ const s = {
   },
   main: {
     flex: 1,
+    // min-width: 0 permet à cette colonne flex de rétrécir sous la largeur
+    // intrinsèque de son contenu (tableaux/grilles/frises larges) : sans lui,
+    // un enfant large force la page à déborder → scroll horizontal global.
+    minWidth: 0,
     marginLeft: layout.sidebarWidth,
     display: 'flex',
     flexDirection: 'column' as const,
