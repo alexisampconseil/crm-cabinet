@@ -177,14 +177,13 @@ export default function PatrimoinePage() {
                   <Field label="Date souscription" w="150px"><CI type="date" val={a.date_souscription} onChange={setActif(i, 'date_souscription')} /></Field>
                 )}
                 <Field label="Montant (€)" w="140px"><CI type="number" val={a.montant?.toString()} onChange={setActif(i, 'montant')} align="right" /></Field>
-                {/* Sous gestion cabinet — uniquement pour les natures éligibles */}
+                {/* Sous gestion cabinet — même ligne, à droite du Montant (natures éligibles) */}
                 {eligibleGestion && (
-                  <Field label="Gestion cabinet" w="260px">
+                  <Field label={' '}>
                     <label style={s.gestionToggle}>
                       <input type="checkbox" checked={!!a.sous_gestion_cabinet} onChange={e => setSousGestion(i, e.target.checked)} />
                       <span>Sous gestion du cabinet</span>
                     </label>
-                    <span style={s.gestionHelp}>Activez cette option uniquement si ce placement est réellement suivi ou géré par le cabinet. Un actif non coché reste dans le patrimoine du client mais n’entre pas dans les encours du cabinet.</span>
                   </Field>
                 )}
               </div>
@@ -533,10 +532,6 @@ const s = {
   gestionToggle: {
     display: 'flex', alignItems: 'center', gap: spacing[2],
     fontFamily: fonts.body, fontSize: fontSizes.sm, color: colors.text,
-    padding: '6px 0', cursor: 'pointer',
-  } as React.CSSProperties,
-  gestionHelp: {
-    fontFamily: fonts.body, fontSize: '0.62rem', color: colors.textLight,
-    lineHeight: 1.4, marginTop: '2px',
+    padding: '6px 0', cursor: 'pointer', whiteSpace: 'nowrap' as const,
   } as React.CSSProperties,
 }
